@@ -1111,7 +1111,7 @@ void ThreadMapPort()
             }
         }
 
-        string strDesc = "Litecoin " + FormatFullVersion();
+        string strDesc = "Fairbrix " + FormatFullVersion();
 
         try {
             loop {
@@ -1190,12 +1190,19 @@ void MapPort(bool)
 // Each pair gives a source name and a seed name.
 // The first name is used as information source for addrman.
 // The second name should resolve to a list of seed addresses.
+
+//FBX -- don't use DNS seeds
+//static const char *strMainNetDNSSeed[][2] = {
+//    {"litecointools.com", "dnsseed.litecointools.com"},
+//    {"litecoinpool.org", "dnsseed.litecoinpool.org"},
+//    {"xurious.com", "dnsseed.ltc.xurious.com"},
+//    {"koin-project.com", "dnsseed.koin-project.com"},
+//    {"weminemnc.com", "dnsseed.weminemnc.com"},
+//    {NULL, NULL}
+//};
 static const char *strMainNetDNSSeed[][2] = {
-    {"litecointools.com", "dnsseed.litecointools.com"},
-    {"litecoinpool.org", "dnsseed.litecoinpool.org"},
-    {"xurious.com", "dnsseed.ltc.xurious.com"},
-    {"koin-project.com", "dnsseed.koin-project.com"},
-    {"weminemnc.com", "dnsseed.weminemnc.com"},
+    {"xf2.org", "bitseed.xf2.org"},
+    {"bitcoin.org.uk", "bitseed.bitcoin.org.uk"},
     {NULL, NULL}
 };
 
@@ -1247,7 +1254,12 @@ void ThreadDNSAddressSeed()
 
 
 
-
+// FBX
+unsigned int pnSeed[] =
+{
+    0xB3BAF536, 0x3D3C9AC6
+};
+/*
 unsigned int pnSeed[] =
 {
     0xdfae795b, 0x0e0f46a6, 0xaf7f170c, 0x900486bc, 0xcbac226c, 0x3b551ac7, 0x56eb5d50, 0x136f21b2,
@@ -1319,6 +1331,7 @@ unsigned int pnSeed[] =
     0xae369478, 0xb1376c7a, 0x2b66cf18, 0xb021cf18, 0xafad957a, 0x8b69d62e, 0x32d3a87c, 0xc4ad846d,
     0x04c9888d, 0x418a3c02, 0x4f680471, 0x5881bd5e, 0x80bf0b1f, 0x569f966d, 0xae28fb5c, 0x25816c4a
 };
+*/
 
 void DumpAddresses()
 {
@@ -1376,7 +1389,14 @@ void ThreadOpenConnections()
     {
         ProcessOneShot();
 
-        MilliSleep(500);
+// FBX v0.3.x would slow down connection attempts after a few minutes
+//        MilliSleep(500);
+        if (GetTime() - nStart > 600)
+            MilliSleep(30000);
+        else if (GetTime() - nStart > 300)
+            MilliSleep(4000);
+        else
+            MilliSleep(500);
 
         CSemaphoreGrant grant(*semOutbound);
         boost::this_thread::interruption_point();
@@ -1732,7 +1752,7 @@ bool BindListenPort(const CService &addrBind, string& strError)
     {
         int nErr = WSAGetLastError();
         if (nErr == WSAEADDRINUSE)
-            strError = strprintf(_("Unable to bind to %s on this computer. Litecoin is probably already running."), addrBind.ToString().c_str());
+            strError = strprintf(_("Unable to bind to %s on this computer. Fairbrix is probably already running."), addrBind.ToString().c_str());
         else
             strError = strprintf(_("Unable to bind to %s on this computer (bind returned error %d, %s)"), addrBind.ToString().c_str(), nErr, strerror(nErr));
         printf("%s\n", strError.c_str());
@@ -1829,7 +1849,9 @@ void StartNode(boost::thread_group& threadGroup)
     // Start threads
     //
 
-    if (!GetBoolArg("-dnsseed", true))
+// FBX -- don't use DNS seeds
+//    if (!GetBoolArg("-dnsseed", true))
+    if (!GetBoolArg("-dnsseed", false))
         printf("DNS seeding disabled\n");
     else
         threadGroup.create_thread(boost::bind(&TraceThread<boost::function<void()> >, "dnsseed", &ThreadDNSAddressSeed));

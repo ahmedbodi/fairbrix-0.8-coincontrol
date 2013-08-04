@@ -24,11 +24,11 @@ SignVerifyMessageDialog::SignVerifyMessageDialog(QWidget *parent) :
 
 #if (QT_VERSION >= 0x040700)
     /* Do not move this to the XML file, Qt before 4.7 will choke on it */
-    ui->addressIn_SM->setPlaceholderText(tr("Enter a Litecoin address (e.g. Ler4HNAEfwYhBmGXcFP2Po1NpRUEiK8km2)"));
+    ui->addressIn_SM->setPlaceholderText(tr("Enter a Fairbrix address (e.g. fca1JykZfJ85MiX8JfGuyKYQ3pkpjsafBg)"));
     ui->signatureOut_SM->setPlaceholderText(tr("Click \"Sign Message\" to generate signature"));
 
-    ui->addressIn_VM->setPlaceholderText(tr("Enter a Litecoin address (e.g. Ler4HNAEfwYhBmGXcFP2Po1NpRUEiK8km2)"));
-    ui->signatureIn_VM->setPlaceholderText(tr("Enter Litecoin signature"));
+    ui->addressIn_VM->setPlaceholderText(tr("Enter a Fairbrix address (e.g. fca1JykZfJ85MiX8JfGuyKYQ3pkpjsafBg)"));
+    ui->signatureIn_VM->setPlaceholderText(tr("Enter Fairbrix signature"));
 #endif
 
     GUIUtil::setupAddressWidget(ui->addressIn_SM, this);

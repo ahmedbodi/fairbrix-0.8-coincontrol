@@ -1,74 +1,75 @@
-Litecoin integration/staging tree
-================================
+Fairbrix is an older, more primitive version of Litecoin.
+ - scrypt as a proof of work scheme
+ - 5 minute block targets
+ - 25 coins per block (constant forever)
+ - 2016 blocks (1 week) to retarget difficulty
 
-http://www.litecoin.org
+This version (Fairbrix 0.8.3.7beta) is based on Litecoin version 'exp-0.8.3.7-cc' (Coin Control).
 
-Copyright (c) 2009-2013 Bitcoin Developers
-Copyright (c) 2011-2013 Litecoin Developers
-
-What is Litecoin?
-----------------
-
-Litecoin is a lite version of Bitcoin using scrypt as a proof-of-work algorithm.
+Litecoin is a lite version of Bitcoin using scrypt as a proof of work scheme.
  - 2.5 minute block targets
  - subsidy halves in 840k blocks (~4 years)
  - ~84 million total coins
-
-The rest is the same as Bitcoin.
+The rest is the same as bitcoin.
  - 50 coins per block
  - 2016 blocks to retarget difficulty
 
-For more information, as well as an immediately useable, binary version of
-the Litecoin client sofware, see http://www.litecoin.org.
+Bitcoin is a free open source peer-to-peer electronic cash system that is
+completely decentralized, without the need for a central server or trusted
+parties.  Users hold the crypto keys to their own money and transact directly
+with each other, with the help of a P2P network to check for double-spending.
+
+
+Build instructions 
+===================
+
+Debian, Ubuntu, Mint
+--------------------
+
+Install Qt Creator.
+
+Install libminiupnpc-dev.
+
+Make sure that the required packages for Qt4 development of your
+distribution are installed, for Debian and Ubuntu these are:
+
+    apt-get install qt4-qmake libqt4-dev build-essential libboost-dev libboost-system-dev \
+        libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev \
+        libssl-dev libdb++-dev
+
+then execute the following:
+
+    qmake
+    make
+
+Alternatively, use Qt Creator and open the `bitcoin-qt.pro` file.
+
+An executable named `fairbrix-qt` will be built.
+
+
+Windows
+--------
+
+see https://bitcointalk.org/index.php?topic=149479.0
+("Building headless Bitcoin and Bitcoin-qt on Windows")
+
+ - "Qt 4.8.5 command prompt" means: run C:\Qt\4.8.5\bin\qtvars.bat from Windows command prompt (as administrator)
+
+ - Steps 3.2 and 4.2 are already done.
+
+ - An executable (in the \release folder) will be built.
+
+Notes:
+
+ - You will also need to distribute mingwm10.dll along with the executable(s).
+ - Only use DLLs from the C:\Qt\4.8.5\bin and C:\MinGW\bin folder.
+   (DLLs with same name from other folders crash the executable)
+ - Keep Qt 4.8.5 installed. (optional but recommended)
+
 
 License
 -------
 
-Litecoin is released under the terms of the MIT license. See `COPYING` for more
+Fairbrix is released under the terms of the MIT license. See `COPYING` for more
 information or see http://opensource.org/licenses/MIT.
-
-Development process
--------------------
-
-Developers work in their own trees, then submit pull requests when they think
-their feature or bug fix is ready.
-
-If it is a simple/trivial/non-controversial change, then one of the Litecoin
-development team members simply pulls it.
-
-If it is a *more complicated or potentially controversial* change, then the patch
-submitter will be asked to start a discussion (if they haven't already) on the
-[mailing list](http://sourceforge.net/mailarchive/forum.php?forum_name=bitcoin-development).
-
-The patch will be accepted if there is broad consensus that it is a good thing.
-Developers should expect to rework and resubmit patches if the code doesn't
-match the project's coding conventions (see `doc/coding.txt`) or are
-controversial.
-
-The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoin/bitcoin/tags) are created
-regularly to indicate new official, stable release versions of Litecoin.
-
-Testing
--------
-
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test. Please be patient and help out, and
-remember this is a security-critical project where any mistake might cost people
-lots of money.
-
-### Automated Testing
-
-Developers are strongly encouraged to write unit tests for new code, and to
-submit new unit tests for old code.
-
-Unit tests for the core code are in `src/test/`. To compile and run them:
-
-    cd src; make -f makefile.unix test
-
-Unit tests for the GUI code are in `src/qt/test/`. To compile and run them:
-
-    qmake BITCOIN_QT_TEST=1 -o Makefile.test bitcoin-qt.pro
-    make -f Makefile.test
-    ./litecoin-qt_test
 

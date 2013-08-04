@@ -6,10 +6,7 @@ Icon: src/qt/res/icons/clock*.png, src/qt/res/icons/tx*.png,
 Designer: Wladimir van der Laan
 License: MIT
 
-Icon: src/qt/res/icons/address-book.png, src/qt/res/icons/export.png,
-      src/qt/res/icons/history.png, src/qt/res/icons/key.png,
-      src/qt/res/icons/lock_*.png, src/qt/res/icons/overview.png,
-      src/qt/res/icons/receive.png, src/qt/res/icons/send.png,
+Icon: src/qt/res/icons/key.png, src/qt/res/icons/lock_*.png
       src/qt/res/icons/synced.png, src/qt/res/icons/filesave.png
 Icon Pack: NUVOLA ICON THEME for KDE 3.x
 Designer: David Vignoni (david@icon-king.com)
@@ -50,9 +47,42 @@ Site: http://www.oxygen-icons.org/
 License: Oxygen icon theme is dual licensed. You may copy it under the Creative Common Attribution-ShareAlike 3.0 License or the GNU Library General Public License.
 
 Icon: src/qt/res/icons/bitcoin.icns, src/qt/res/src/bitcoin.svg,
-      src/qt/res/src/bitcoin.ico, src/qt/res/src/bitcoin.png,
-      src/qt/res/src/bitcoin_testnet.png, docs/bitcoin_logo_doxygen.png,
-      src/qt/res/icons/toolbar.png, src/qt/res/icons/toolbar_testnet.png,
+      src/qt/res/src/bitcoin.ico, docs/bitcoin_logo_doxygen.png,
       src/qt/res/images/splash.png, src/qt/res/images/splash_testnet.png
 Designer: Jonas Schnelli (based on the original bitcoin logo from Bitboy)
 License: MIT
+
+-----------------------------------------------------------------------------
+
+Fairbrix:
+
+Icon: src/qt/res/icons/send.png
+Icon Pack: Vista Style Arrow
+Designer: Icons Land
+License: Freeware Non-commercial
+Site: http://findicons.com/icon/231371/right3green
+
+Icon: src/qt/res/icons/address-book.png
+Icon Pack: Farm-Fresh Web
+Designer: FatCow Web Hosting
+License: Creative Commons Attribution (by)
+Site: http://findicons.com/icon/163938/book_open
+
+Icon: src/qt/res/icons/receive.png, src/qt/res/icons/history.png,
+      src/qt/res/icons/export.png
+Designer: Oxygen team
+Icon Pack: Oxygen
+License: Creative Common Attribution-ShareAlike 3.0 License or LGPL
+Site: http://www.oxygen-icons.org/
+
+Icon: src/qt/res/icons/bitcoin.png, src/qt/res/icons/toolbar.png
+Designer: Bitboy (optimized for 16x16 by Wladimir van der Laan)
+License: Public Domain
+Site: http://forum.bitcoin.org/?topic=1756.0
+
+Icon: src/qt/res/icons/overview.png
+Icon Pack: Primo
+Designer: Jack Cai
+License: Creative Commons Attribution No Derivatives (by-nd)
+Site: http://findicons.com/icon/175944/home?id=176221#
+

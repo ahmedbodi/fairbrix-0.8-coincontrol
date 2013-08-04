@@ -31,8 +31,11 @@ CTxMemPool mempool;
 unsigned int nTransactionsUpdated = 0;
 
 map<uint256, CBlockIndex*> mapBlockIndex;
-uint256 hashGenesisBlock("0x12a765e31ffd4059bada1e25190f6e98c99d9714d334efa41a195a7e7e04bfe2");
-static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // Litecoin: starting difficulty is 1 / 2^12
+// FBX
+//uint256 hashGenesisBlock("0x12a765e31ffd4059bada1e25190f6e98c99d9714d334efa41a195a7e7e04bfe2");
+//static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // Litecoin: starting difficulty is 1 / 2^12
+uint256 hashGenesisBlock("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // fbx v0.3.x testnet default: (~uint256(0) >> 20)
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
 uint256 nBestChainWork = 0;
@@ -48,10 +51,17 @@ bool fBenchmark = false;
 bool fTxIndex = false;
 unsigned int nCoinCacheSize = 5000;
 
-/** Fees smaller than this (in satoshi) are considered zero fee (for transaction creation) */
-int64 CTransaction::nMinTxFee = 2000000;
-/** Fees smaller than this (in satoshi) are considered zero fee (for relaying) */
-int64 CTransaction::nMinRelayTxFee = 2000000;
+// FBX fees -- Base fee is either nMinTxFee or nMinRelayTxFee
+// Minimum fee (when fees apply) 0.01. This is less than litecoins so the fee isn't
+// quite so large when you send an output that is nearly a cent.
+// However, there is code elsewhere that will increase this fee for very small outputs.
+//
+///** Fees smaller than this (in satoshi) are considered zero fee (for transaction creation) */
+//int64 CTransaction::nMinTxFee = 2000000;
+///** Fees smaller than this (in satoshi) are considered zero fee (for relaying) */
+//int64 CTransaction::nMinRelayTxFee = 2000000;
+int64 CTransaction::nMinTxFee = 1000000;
+int64 CTransaction::nMinRelayTxFee = 1000000;
 
 CMedianFilter<int> cPeerBlockCounts(8, 0); // Amount of blocks that other nodes claim to have
 
@@ -64,7 +74,7 @@ map<uint256, map<uint256, CDataStream*> > mapOrphanTransactionsByPrev;
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
 
-const string strMessageMagic = "Litecoin Signed Message:\n";
+const string strMessageMagic = "Fairbrix Signed Message:\n";
 
 double dHashesPerSec = 0.0;
 int64 nHPSTimerStart = 0;
@@ -605,7 +615,12 @@ int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
 
     unsigned int nBytes = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
     unsigned int nNewBlockSize = nBlockSize + nBytes;
-    int64 nMinFee = (1 + (int64)nBytes / 1000) * nBaseFee;
+
+// FBX fees
+    int smallTxOutCount = 0;
+// This makes large sized transactions cost more than before.
+//    int64 nMinFee = (1 + (int64)nBytes / 1000) * nBaseFee;
+    int64 nMinFee = (1 + (int64)nBytes / 500) * nBaseFee;
 
     if (fAllowFree)
     {
@@ -619,16 +634,30 @@ int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
         else
         {
             // Free transaction area
-            if (nNewBlockSize < 27000)
+// FBX fees
+// since blocks are faster than in bitcoin, reserve less space for free transactions.
+//            if (nNewBlockSize < 27000)
+            if (nNewBlockSize < 12000)
                 nMinFee = 0;
         }
     }
 
     // Litecoin
     // To limit dust spam, add nBaseFee for each output less than DUST_SOFT_LIMIT
-    BOOST_FOREACH(const CTxOut& txout, vout)
-        if (txout.nValue < DUST_SOFT_LIMIT)
+// FBX fees
+//    BOOST_FOREACH(const CTxOut& txout, vout)
+//        if (txout.nValue < DUST_SOFT_LIMIT)
+//            nMinFee += nBaseFee;
+    BOOST_FOREACH(const CTxOut& txout, vout)  {
+        if (txout.nValue < CENT/100) { // outputs smaller than 0.0001
+            nMinFee += nBaseFee * 100;  // fee of 1
+            smallTxOutCount++;
+        }
+    else if ((txout.nValue < CENT)) {
             nMinFee += nBaseFee;
+            smallTxOutCount++;
+        }
+    }
 
     // Raise the price as the block approaches full
     if (nBlockSize != 1 && nNewBlockSize >= MAX_BLOCK_SIZE_GEN/2)
@@ -640,6 +669,13 @@ int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
 
     if (!MoneyRange(nMinFee))
         nMinFee = MAX_MONEY;
+
+// FBX fees
+    // This is the core change to limit dust spam.  Instead of a flat fee for small outputs charge a fee
+    // for each small output.  If there are more than 15 small outputs than don't allow the transaction at all.
+            if(smallTxOutCount > 15)
+                nMinFee = MAX_MONEY;
+
     return nMinFee;
 }
 
@@ -774,6 +810,11 @@ bool CTxMemPool::accept(CValidationState &state, CTransaction &tx, bool fCheckIn
         // be annoying or make others' transactions take longer to confirm.
         if (fLimitFree && nFees < CTransaction::nMinRelayTxFee)
         {
+// FBX fees
+            static double dFreeRelay;
+            static double dPartialRelay;
+            static double dNewFreeCount;
+
             static double dFreeCount;
             static int64 nLastTime;
             int64 nNow = GetTime();
@@ -784,9 +825,25 @@ bool CTxMemPool::accept(CValidationState &state, CTransaction &tx, bool fCheckIn
             dFreeCount *= pow(1.0 - 1.0/600.0, (double)(nNow - nLastTime));
             nLastTime = nNow;
             // -limitfreerelay unit is thousand-bytes-per-minute
-            // At default rate it would take over a month to fill 1GB
-            if (dFreeCount >= GetArg("-limitfreerelay", 15)*10*1000)
+
+// FBX fees
+// Why: another spam attack mitigation. Don't relay more than (on average) 5000 bytes
+// of free transactions a minute.  This is roughly equivilant to 20 normal sized transactions per minute.
+// At default rate it would take several months to fill 1GB
+//
+//            // At default rate it would take over a month to fill 1GB
+//            if (dFreeCount >= GetArg("-limitfreerelay", 15)*10*1000)
+//            return error("CTxMemPool::accept() : free transaction rejected by rate limiter");
+            dFreeRelay = GetArg("-limitfreerelay", 5)*10*1000;
+            dPartialRelay = dFreeRelay * 0.75;
+            dNewFreeCount = dFreeCount + nSize;
+            if( !( dNewFreeCount <= dFreeRelay
+                || dFreeCount < dPartialRelay
+// fixme                || IsFromMe(tx)
+              )
+            )
                 return error("CTxMemPool::accept() : free transaction rejected by rate limiter");
+
             if (fDebug)
                 printf("Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount+nSize);
             dFreeCount += nSize;
@@ -936,6 +993,8 @@ int CMerkleTx::GetBlocksToMaturity() const
 {
     if (!IsCoinBase())
         return 0;
+// FBX -- mined balance available after 151 confirmations
+//    return max(0, (COINBASE_MATURITY+20) - GetDepthInMainChain());
     return max(0, (COINBASE_MATURITY+20) - GetDepthInMainChain());
 }
 
@@ -1078,16 +1137,21 @@ uint256 static GetOrphanRoot(const CBlockHeader* pblock)
 
 int64 static GetBlockValue(int nHeight, int64 nFees)
 {
-    int64 nSubsidy = 50 * COIN;
-
-    // Subsidy is cut in half every 840000 blocks, which will occur approximately every 4 years
-    nSubsidy >>= (nHeight / 840000); // Litecoin: 840k blocks in ~4 years
+// FBX
+//    int64 nSubsidy = 50 * COIN;
+//
+//    // Subsidy is cut in half every 840000 blocks, which will occur approximately every 4 years
+//    nSubsidy >>= (nHeight / 840000); // Litecoin: 840k blocks in ~4 years
+    int64 nSubsidy = 25 * COIN;
 
     return nSubsidy + nFees;
 }
 
-static const int64 nTargetTimespan = 3.5 * 24 * 60 * 60; // Litecoin: 3.5 days
-static const int64 nTargetSpacing = 2.5 * 60; // Litecoin: 2.5 minutes
+// FBX
+//static const int64 nTargetTimespan = 3.5 * 24 * 60 * 60; // Litecoin: 3.5 days
+//static const int64 nTargetSpacing = 2.5 * 60; // Litecoin: 2.5 minutes
+static const int64 nTargetTimespan = 7 * 24 * 60 * 60; // one week
+static const int64 nTargetSpacing = 5 * 60;
 static const int64 nInterval = nTargetTimespan / nTargetSpacing;
 
 //
@@ -1638,7 +1702,14 @@ bool CBlock::ConnectBlock(CValidationState &state, CBlockIndex* pindex, CCoinsVi
         for (unsigned int i=0; i<vtx.size(); i++) {
             uint256 hash = GetTxHash(i);
             if (view.HaveCoins(hash) && !view.GetCoins(hash).IsPruned())
-                return state.DoS(100, error("ConnectBlock() : tried to overwrite transaction"));
+// FBX
+//                return state.DoS(100, error("ConnectBlock() : tried to overwrite transaction"));
+            {
+                if (pindex->nHeight <= 3075)
+                    printf("ConnectBlock() : tried to overwrite transaction (allowed for early blocks)\n");
+                else
+                    return state.DoS(100, error("ConnectBlock() : tried to overwrite transaction"));
+            }
         }
     }
 
@@ -2721,14 +2792,20 @@ void UnloadBlockIndex()
 
 bool LoadBlockIndex()
 {
-    if (fTestNet)
-    {
-        pchMessageStart[0] = 0xfc;
-        pchMessageStart[1] = 0xc1;
-        pchMessageStart[2] = 0xb7;
-        pchMessageStart[3] = 0xdc;
-        hashGenesisBlock = uint256("0xf5ae71e26c74beacc88382716aced69cddf3dffff24f384e1808905e0188f68f");
-    }
+// FBX
+//    if (fTestNet)
+//    {
+//        pchMessageStart[0] = 0xfc;
+//        pchMessageStart[1] = 0xc1;
+//        pchMessageStart[2] = 0xb7;
+//        pchMessageStart[3] = 0xdc;
+//        hashGenesisBlock = uint256("0xf5ae71e26c74beacc88382716aced69cddf3dffff24f384e1808905e0188f68f");
+//    }
+    pchMessageStart[0] = 0xf9;
+    pchMessageStart[1] = 0xdb;
+    pchMessageStart[2] = 0xf9;
+    pchMessageStart[3] = 0xdb;
+    hashGenesisBlock = uint256("0x002a91713910bc96eb0edf237fcd2799d7a01186e1e96023e860bc70b3916200");
 
     //
     // Load block index from databases
@@ -2759,35 +2836,57 @@ bool InitBlockIndex() {
         //     CTxOut(nValue=50.00000000, scriptPubKey=040184710fa689ad5023690c80f3a4)
         //   vMerkleTree: 97ddfbbae6
 
+// FBX
+          // Genesis block
+//        const char* pszTimestamp = "NY Times 05/Oct/2011 Steve Jobs, Apple’s Visionary, Dies at 56";
+//        CTransaction txNew;
+//        txNew.vin.resize(1);
+//        txNew.vout.resize(1);
+//        txNew.vin[0].scriptSig = CScript() << 486604799 << CBigNum(4) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+//        txNew.vout[0].nValue = 50 * COIN;
+//        txNew.vout[0].scriptPubKey = CScript() << ParseHex("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9") << OP_CHECKSIG;
+//        CBlock block;
+//        block.vtx.push_back(txNew);
+//        block.hashPrevBlock = 0;
+//        block.hashMerkleRoot = block.BuildMerkleTree();
+//        block.nVersion = 1;
+//        block.nTime    = 1317972665;
+//        block.nBits    = 0x1e0ffff0;
+//        block.nNonce   = 2084524493;
+//
+//        if (fTestNet)
+//        {
+//            block.nTime    = 1317798646;
+//            block.nNonce   = 385270584;
+//        }
         // Genesis block
-        const char* pszTimestamp = "NY Times 05/Oct/2011 Steve Jobs, Apple’s Visionary, Dies at 56";
+        const char* pszTimestamp = "\"nytimes.com 10/1/2011 - Police Arrest Over 700 Protesters on Brooklyn Bridge\"";
         CTransaction txNew;
         txNew.vin.resize(1);
         txNew.vout.resize(1);
-        txNew.vin[0].scriptSig = CScript() << 486604799 << CBigNum(4) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+        int nBits = 486604799;
+        int extra = 3;
+        txNew.vin[0].scriptSig = CScript() << nBits << CBigNum(++extra) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         txNew.vout[0].nValue = 50 * COIN;
-        txNew.vout[0].scriptPubKey = CScript() << ParseHex("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9") << OP_CHECKSIG;
+        txNew.vout[0].scriptPubKey = CScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
         CBlock block;
         block.vtx.push_back(txNew);
         block.hashPrevBlock = 0;
         block.hashMerkleRoot = block.BuildMerkleTree();
         block.nVersion = 1;
-        block.nTime    = 1317972665;
+        block.nTime    = 1317529878;
         block.nBits    = 0x1e0ffff0;
-        block.nNonce   = 2084524493;
-
-        if (fTestNet)
-        {
-            block.nTime    = 1317798646;
-            block.nNonce   = 385270584;
-        }
+        block.nNonce   = 385610221;
 
         //// debug print
         uint256 hash = block.GetHash();
         printf("%s\n", hash.ToString().c_str());
         printf("%s\n", hashGenesisBlock.ToString().c_str());
         printf("%s\n", block.hashMerkleRoot.ToString().c_str());
-        assert(block.hashMerkleRoot == uint256("0x97ddfbbae6be97fd6cdf3e7ca13232a3afff2353e29badfab7f73011edd4ced9"));
+// FBX
+//        assert(block.hashMerkleRoot == uint256("0x97ddfbbae6be97fd6cdf3e7ca13232a3afff2353e29badfab7f73011edd4ced9"));
+        assert(block.hashMerkleRoot == uint256("0x40a627262ed716f0f3d5104315fe0b600bf8e32a021929299163f74151fa52b1"));
+
         block.print();
         assert(hash == hashGenesisBlock);
 
@@ -3060,8 +3159,9 @@ bool static AlreadyHave(const CInv& inv)
 // The message start string is designed to be unlikely to occur in normal data.
 // The characters are rarely used upper ASCII, not valid as UTF-8, and produce
 // a large 4-byte int at any alignment.
-unsigned char pchMessageStart[4] = { 0xfb, 0xc0, 0xb6, 0xdb }; // Litecoin: increase each by adding 2 to bitcoin's value.
-
+// FBX
+//unsigned char pchMessageStart[4] = { 0xfb, 0xc0, 0xb6, 0xdb }; // Litecoin: increase each by adding 2 to bitcoin's value.
+unsigned char pchMessageStart[4] = { 0xf9, 0xbe, 0xb4, 0xd9 };
 
 void static ProcessGetData(CNode* pfrom)
 {
@@ -4303,7 +4403,9 @@ CBlockTemplate* CreateNewBlock(CReserveKey& reservekey)
             // Prioritize by fee once past the priority size or we run out of high-priority
             // transactions:
             if (!fSortedByFee &&
-                ((nBlockSize + nTxSize >= nBlockPrioritySize) || (dPriority < COIN * 576 / 250)))
+// FBX 288 blocks found a day, but priority cutoff is 144 (like bitcoin)
+//                ((nBlockSize + nTxSize >= nBlockPrioritySize) || (dPriority < COIN * 576 / 250)))
+                ((nBlockSize + nTxSize >= nBlockPrioritySize) || (dPriority < COIN * 144 / 250)))
             {
                 fSortedByFee = true;
                 comparer = TxPriorityCompare(fSortedByFee);

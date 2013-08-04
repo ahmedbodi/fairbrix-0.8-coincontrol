@@ -486,15 +486,21 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         // Priority
         dPriority = dPriorityInputs / nBytes;
         sPriorityLabel = CoinControlDialog::getPriorityLabel(dPriority);
-        
+
         // Fee
-        int64 nFee = nTransactionFee * (1 + (int64)nBytes / 1000);
-        
+// FBX fees
+// Why: matching a change made in main.cpp (formerly main.h)
+//        int64 nFee = nTransactionFee * (1 + (int64)nBytes / 1000);
+        int64 nFee = nTransactionFee * (1 + (int64)nBytes / 500);
+
         // Min Fee
-        int64 nMinFee = CTransaction::nMinTxFee * (1 + (int64)nBytes / 1000) + CTransaction::nMinTxFee * nQuantityDust;
+// FBX fees
+// Why: matching a change made in main.cpp (formerly main.h)
+//        int64 nMinFee = CTransaction::nMinTxFee * (1 + (int64)nBytes / 1000) + CTransaction::nMinTxFee * nQuantityDust;
+        int64 nMinFee = CTransaction::nMinTxFee * (1 + (int64)nBytes / 500) + CTransaction::nMinTxFee * nQuantityDust;
         if (CTransaction::AllowFree(dPriority) && nBytes < 10000)
             nMinFee = 0;
-        
+
         nPayFee = max(nFee, nMinFee);
         
         if (nPayAmount > 0)

@@ -1,7 +1,10 @@
 src/*.exe
 src/litecoin
+src/fairbrix
 src/litecoind
+src/fairbrixd
 src/test_litecoin
+src/test_fairbrix
 .*.swp
 *.*~*
 *.bak
@@ -10,16 +13,21 @@ src/test_litecoin
 *.o
 *.patch
 .litecoin
+.fairbrix
 
 # Compilation and Qt preprocessor part
 *.qm
 Makefile
 litecoin-qt
+fairbrix-qt
+fairbrixd
 Litecoin-Qt.app
+fairbrix-Qt.app
 
 # Unit-tests
 Makefile.test
 litecoin-qt_test
+fairbrix-qt_test
 
 # Resources cpp
 qrc_*.cpp
