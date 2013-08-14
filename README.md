@@ -62,13 +62,14 @@ see https://bitcointalk.org/index.php?topic=149479.0
 Notes:
 
  - You will also need to distribute mingwm10.dll along with the executable(s).
- - Only use DLLs from the C:\Qt\4.8.5\bin and C:\MinGW\bin folder.
+ - Only use libgcc_s_dw2-1.dll, libstdc++-6.dll and mingwm10.dll from C:\MinGW\bin folder,
+   and QtCore4.dll, QtGui4.dll and QtNetwork4.dll from C:\Qt\4.8.5\bin folder.
    (DLLs with same name from other folders crash the executable)
  - Keep Qt 4.8.5 installed. (optional but recommended)
 
 
 License
--------
+========
 
 Fairbrix is released under the terms of the MIT license. See `COPYING` for more
 information or see http://opensource.org/licenses/MIT.

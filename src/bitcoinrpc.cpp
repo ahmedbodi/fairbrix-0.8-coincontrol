@@ -43,7 +43,9 @@ static boost::thread_group* rpc_worker_group = NULL;
 
 static inline unsigned short GetDefaultRPCPort()
 {
-    return GetBoolArg("-testnet", false) ? 19332 : 9332;
+// FBX
+//    return GetBoolArg("-testnet", false) ? 19332 : 9332;
+    return GetBoolArg("-testnet", false) ? 8645 : 8645;
 }
 
 Object JSONRPCError(int code, const string& message)
@@ -236,6 +238,10 @@ static const CRPCCommand vRPCCommands[] =
     { "getrawmempool",          &getrawmempool,          true,      false },
     { "getblock",               &getblock,               false,     false },
     { "getblockhash",           &getblockhash,           false,     false },
+// FBX proof of stake voting test
+    { "svdebugblock",           &svdebugblock,           false,     false },
+    { "svscanblocks",           &svscanblocks,           false,     false },
+
     { "gettransaction",         &gettransaction,         false,     false },
     { "listtransactions",       &listtransactions,       false,     false },
     { "listaddressgroupings",   &listaddressgroupings,   false,     false },
@@ -1155,6 +1161,12 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "listreceivedbyaccount"  && n > 1) ConvertTo<bool>(params[1]);
     if (strMethod == "getbalance"             && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "getblockhash"           && n > 0) ConvertTo<boost::int64_t>(params[0]);
+// FBX proof of stake voting test
+    if (strMethod == "svdebugblock"           && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svdebugblock"           && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svscanblocks"           && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svscanblocks"           && n > 1) ConvertTo<boost::int64_t>(params[1]);
+
     if (strMethod == "move"                   && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "move"                   && n > 3) ConvertTo<boost::int64_t>(params[3]);
     if (strMethod == "sendfrom"               && n > 2) ConvertTo<double>(params[2]);

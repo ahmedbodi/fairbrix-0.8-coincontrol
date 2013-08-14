@@ -1384,16 +1384,21 @@ void ThreadOpenConnections()
     }
 
     // Initiate network connections
+// FBX v0.3.x would slow down connection attempts after a few minutes
+// (but not if totally disconnected)
+//    int64 nStart = GetTime();
+//    loop
+//    {
+//        ProcessOneShot();
+//        MilliSleep(500);
     int64 nStart = GetTime();
+    int64 nStart2 = nStart;
     loop
     {
         ProcessOneShot();
-
-// FBX v0.3.x would slow down connection attempts after a few minutes
-//        MilliSleep(500);
-        if (GetTime() - nStart > 600)
+        if (GetTime() - nStart2 > 600)
             MilliSleep(30000);
-        else if (GetTime() - nStart > 300)
+        else if (GetTime() - nStart2 > 300)
             MilliSleep(4000);
         else
             MilliSleep(500);
@@ -1439,6 +1444,10 @@ void ThreadOpenConnections()
                 }
             }
         }
+
+// FBX v0.3.x would slow down connection attempts after a few minutes
+// (but not if totally disconnected)
+        if (nOutbound < 1) nStart2 = GetTime();
 
         int64 nANow = GetAdjustedTime();
 

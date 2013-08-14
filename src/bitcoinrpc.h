@@ -195,6 +195,10 @@ extern json_spirit::Value setmininput(const json_spirit::Array& params, bool fHe
 extern json_spirit::Value getrawmempool(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getblockhash(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getblock(const json_spirit::Array& params, bool fHelp);
+// FBX proof of stake voting test
+extern json_spirit::Value svdebugblock(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svscanblocks(const json_spirit::Array& params, bool fHelp);
+
 extern json_spirit::Value gettxoutsetinfo(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value gettxout(const json_spirit::Array& params, bool fHelp);
 

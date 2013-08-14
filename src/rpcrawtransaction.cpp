@@ -166,6 +166,249 @@ Value getrawtransaction(const Array& params, bool fHelp)
     return result;
 }
 
+// FBX proof of stake voting test
+int64 posvValueDiff;    // aggregate money inflow and outflow for all matching addresses
+int64 posvTxValue;      // output of one tx
+int posvSig;            // inflow or outflow
+int posvVerbose;
+int posvWarningCount;   // more than 1 address per output?
+int posvErrCount;       //
+std::string strPosvTest;
+void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
+{
+    txnouttype type;
+    vector<CTxDestination> addresses;
+    int nRequired;
+
+    if (posvVerbose)
+    {
+        out.push_back(Pair("asm", scriptPubKey.ToString()));
+        out.push_back(Pair("hex", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
+    }
+
+    if (!ExtractDestinations(scriptPubKey, type, addresses, nRequired))
+    {
+        out.push_back(Pair("type", GetTxnOutputType(TX_NONSTANDARD)));
+        return;
+    }
+
+    if (posvVerbose)
+    {
+        out.push_back(Pair("reqSigs", nRequired));
+        out.push_back(Pair("type", GetTxnOutputType(type)));
+    }
+
+    Array a;
+    bool fmatch = false;
+    int n = 0;
+    BOOST_FOREACH(const CTxDestination& addr, addresses)
+    {
+        a.push_back(CBitcoinAddress(addr).ToString());
+        string s = CBitcoinAddress(addr).ToString();
+
+        fmatch = true;
+        n++;
+        for (unsigned int i = 0; i < strPosvTest.length(); i++)
+        {
+            if (s[i+1] != strPosvTest[i])
+            {
+                fmatch = false;
+                break;
+            }
+        }
+        if (fmatch) posvValueDiff += (posvTxValue * posvSig);
+    }
+    if (fmatch)
+        out.push_back(Pair("addresses (match detected)", a));
+    else
+        out.push_back(Pair("addresses", a));
+
+    // notice outputs with many addresses
+    if (n > 1)
+    {
+        posvWarningCount++;
+        if (fmatch) posvErrCount++;
+    }
+
+}
+Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
+{
+    Object result;
+    if (posvVerbose) result.push_back(Pair("hash", block.GetHash().GetHex()));
+    CMerkleTx txGen(block.vtx[0]);
+    txGen.SetMerkleBranch(&block);
+    if (posvVerbose)
+    {
+        result.push_back(Pair("confirmations", (int)txGen.GetDepthInMainChain()));
+        result.push_back(Pair("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION)));
+        result.push_back(Pair("height", blockindex->nHeight));
+        result.push_back(Pair("version", block.nVersion));
+        result.push_back(Pair("merkleroot", block.hashMerkleRoot.GetHex()));
+    }
+
+    int i1 = 0;
+    BOOST_FOREACH(const CTransaction&tx, block.vtx)
+    {
+        i1++;
+        result.push_back(Pair("transaction#", i1));
+        result.push_back(Pair("tx hash", tx.GetHash().GetHex()));
+
+        // code from TxToJSON
+        BOOST_FOREACH(const CTxIn& txin, tx.vin)
+        {
+            if (tx.IsCoinBase())
+                result.push_back(Pair("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
+            else
+            {
+                result.push_back(Pair("no coinbase, txid", txin.prevout.hash.GetHex()));
+
+                // backtrace transactions if not mined (need to know where the coins coming from)
+                CTransaction tx2;
+                uint256 hashBlock2 = 0;
+                if (!GetTransaction(txin.prevout.hash, tx2, hashBlock2, true))
+                    throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
+
+                BOOST_FOREACH(const CTxIn& txin2, tx2.vin)
+                {
+                    if (tx2.IsCoinBase())
+                        result.push_back(Pair("previous tx coinbase", HexStr(txin2.scriptSig.begin(), txin2.scriptSig.end())));
+                    else
+                        result.push_back(Pair("previous tx no coinbase, txid", txin2.prevout.hash.GetHex()));
+                }
+
+                // check outputs of each 'previous' transaction (to count coins sent *from* special addresses)
+                posvTxValue = 0;
+                posvSig = -1;
+                int i4 = 0;
+                for (unsigned int i = 0; i < tx2.vout.size(); i++)
+                {
+                    i4++;
+                    const CTxOut& txout4 = tx2.vout[i];
+                    result.push_back(Pair("previous tx output#", i4));
+                    posvTxValue = txout4.nValue;
+                    result.push_back(Pair("value", ValueFromAmount(txout4.nValue)));
+                    Object o4;
+                    posvScriptPubKeyToJSON(txout4.scriptPubKey, o4);
+                    if (posvVerbose) result.push_back(Pair("scriptPubKey previous tx", o4));
+                }
+                // end processing 'previous' tx
+
+                result.push_back(Pair("vout", (boost::int64_t)txin.prevout.n));
+                Object o;
+                o.push_back(Pair("asm", txin.scriptSig.ToString()));
+                o.push_back(Pair("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
+                result.push_back(Pair("scriptSig", o));
+            }
+            result.push_back(Pair("sequence", (boost::int64_t)txin.nSequence));
+        }
+
+        // check outputs of each transaction (to count coins sent *to* special addresses)
+        posvTxValue = 0;
+        posvSig = 1;
+        int i3 = 0;
+        for (unsigned int i = 0; i < tx.vout.size(); i++)
+        {
+            i3++;
+            const CTxOut& txout = tx.vout[i];
+            result.push_back(Pair("output#", i3));
+            posvTxValue = txout.nValue;
+            result.push_back(Pair("value", ValueFromAmount(txout.nValue)));
+            Object o;
+            posvScriptPubKeyToJSON(txout.scriptPubKey, o);
+            result.push_back(Pair("scriptPubKey", o));
+
+        }
+
+    }
+
+    if (posvVerbose)
+    {
+        result.push_back(Pair("time", (boost::int64_t)block.GetBlockTime()));
+        result.push_back(Pair("nonce", (boost::uint64_t)block.nNonce));
+        result.push_back(Pair("bits", HexBits(block.nBits)));
+        result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
+
+        if (blockindex->pprev)
+            result.push_back(Pair("previousblockhash", blockindex->pprev->GetBlockHash().GetHex()));
+        if (blockindex->pnext)
+            result.push_back(Pair("nextblockhash", blockindex->pnext->GetBlockHash().GetHex()));
+    }
+
+    return result;
+}
+Value svdebugblock(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 3)
+        throw runtime_error(
+            "svdebugblock <index> <verbose level> <vanity string>\n"
+            "Scans block <index> and returns info about balance change\n"
+            "of addresses containing <vanity string>.");
+
+    posvVerbose = params[1].get_int();
+    posvValueDiff = 0;
+    posvWarningCount = 0;
+    posvErrCount = 0;
+
+    int nHeight = params[0].get_int();
+    if (nHeight < 0 || nHeight > nBestHeight)
+        throw runtime_error("Block number out of range.");
+
+    strPosvTest = params[2].get_str();
+    if (strPosvTest.length() > 10)
+        throw runtime_error("vanity string too long");
+
+    CBlockIndex* pblockindex = FindBlockByHeight(nHeight);
+    CBlock block;
+    block.ReadFromDisk(pblockindex);
+
+    Object result = posvblockToJSON(block, pblockindex);
+
+    result.push_back(Pair("total balance change", (double)posvValueDiff/(double)COIN));
+    if (posvWarningCount) result.push_back(Pair("outputs with more than 1 addr", posvWarningCount));
+    if (posvErrCount) result.push_back(Pair("matching outputs with more than 1 addr", posvErrCount));
+
+    return result;
+}
+Value svscanblocks(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 3)
+        throw runtime_error(
+            "svscanblocks <index start> <index end> <vanity string>\n"
+            "Scans all blocks between <index start> and <index end>.\n"
+            "Returns info about aggregate balance change of addresses\n"
+            "containing <vanity string>.");
+
+    posvVerbose = 0;
+    posvValueDiff = 0;
+    posvWarningCount = 0;
+    posvErrCount = 0;
+
+    int nHeight0 = params[0].get_int();
+    int nHeight1 = params[1].get_int();
+    if (nHeight1 < nHeight0 || nHeight0 < 0 || nHeight1 > nBestHeight)
+        throw runtime_error("Block number(s) out of range.");
+
+    strPosvTest = params[2].get_str();
+    if (strPosvTest.length() > 10)
+        throw runtime_error("vanity string too long");
+
+    for (int nHeight = nHeight0; nHeight <= nHeight1; nHeight++)
+    {
+        CBlockIndex* pblockindex = FindBlockByHeight(nHeight);
+        CBlock block;
+        block.ReadFromDisk(pblockindex);
+
+        posvblockToJSON(block, pblockindex);
+    }
+
+    Object result2;
+    result2.push_back(Pair("total balance change", (double)posvValueDiff/(double)COIN));
+    if (posvWarningCount) result2.push_back(Pair("outputs with more than 1 addr", posvWarningCount));
+    if (posvErrCount) result2.push_back(Pair("matching outputs with more than 1 addr", posvErrCount));
+
+    return result2;
+}
+
 Value listunspent(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 3)
