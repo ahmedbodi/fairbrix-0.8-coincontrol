@@ -229,7 +229,6 @@ void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
         posvWarningCount++;
         if (fmatch) posvErrCount++;
     }
-
 }
 Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
 {
@@ -260,7 +259,9 @@ Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
                 result.push_back(Pair("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
             else
             {
-                result.push_back(Pair("no coinbase, txid", txin.prevout.hash.GetHex()));
+                result.push_back(Pair("input from txid", txin.prevout.hash.GetHex()));
+                int64 vout2 = (boost::int64_t)txin.prevout.n;
+                result.push_back(Pair("begin processing previous tx, vout", vout2));
 
                 // backtrace transactions if not mined (need to know where the coins coming from)
                 CTransaction tx2;
@@ -271,46 +272,47 @@ Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
                 BOOST_FOREACH(const CTxIn& txin2, tx2.vin)
                 {
                     if (tx2.IsCoinBase())
-                        result.push_back(Pair("previous tx coinbase", HexStr(txin2.scriptSig.begin(), txin2.scriptSig.end())));
+                        result.push_back(Pair("previous tx: coinbase", HexStr(txin2.scriptSig.begin(), txin2.scriptSig.end())));
                     else
-                        result.push_back(Pair("previous tx no coinbase, txid", txin2.prevout.hash.GetHex()));
+                        result.push_back(Pair("previous tx: input from txid", txin2.prevout.hash.GetHex()));
                 }
 
                 // check outputs of each 'previous' transaction (to count coins sent *from* special addresses)
                 posvTxValue = 0;
                 posvSig = -1;
-                int i4 = 0;
                 for (unsigned int i = 0; i < tx2.vout.size(); i++)
                 {
-                    i4++;
                     const CTxOut& txout4 = tx2.vout[i];
-                    result.push_back(Pair("previous tx output#", i4));
+                    result.push_back(Pair("previous tx output#", (int) i));
                     posvTxValue = txout4.nValue;
                     result.push_back(Pair("value", ValueFromAmount(txout4.nValue)));
+
+                    if (i != vout2) continue;
+
                     Object o4;
                     posvScriptPubKeyToJSON(txout4.scriptPubKey, o4);
-                    if (posvVerbose) result.push_back(Pair("scriptPubKey previous tx", o4));
+                    result.push_back(Pair("scriptPubKey previous tx", o4));
                 }
                 // end processing 'previous' tx
 
-                result.push_back(Pair("vout", (boost::int64_t)txin.prevout.n));
-                Object o;
-                o.push_back(Pair("asm", txin.scriptSig.ToString()));
-                o.push_back(Pair("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
-                result.push_back(Pair("scriptSig", o));
+                if (posvVerbose)
+                {
+                    Object o;
+                    o.push_back(Pair("asm", txin.scriptSig.ToString()));
+                    o.push_back(Pair("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
+                    result.push_back(Pair("scriptSig", o));
+                }
             }
-            result.push_back(Pair("sequence", (boost::int64_t)txin.nSequence));
+            if (posvVerbose) result.push_back(Pair("sequence", (boost::int64_t)txin.nSequence));
         }
 
         // check outputs of each transaction (to count coins sent *to* special addresses)
         posvTxValue = 0;
         posvSig = 1;
-        int i3 = 0;
         for (unsigned int i = 0; i < tx.vout.size(); i++)
         {
-            i3++;
             const CTxOut& txout = tx.vout[i];
-            result.push_back(Pair("output#", i3));
+            result.push_back(Pair("output#", (int) i));
             posvTxValue = txout.nValue;
             result.push_back(Pair("value", ValueFromAmount(txout.nValue)));
             Object o;
@@ -340,7 +342,7 @@ Value svdebugblock(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
         throw runtime_error(
-            "svdebugblock <index> <verbose level> <vanity string>\n"
+            "svdebugblock <index> <verbose 0|1> <vanity string>\n"
             "Scans block <index> and returns info about balance change\n"
             "of addresses containing <vanity string>.");
 
