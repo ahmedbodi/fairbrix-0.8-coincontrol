@@ -139,6 +139,10 @@ extern bool fDebug;
 extern bool fDebugNet;
 extern bool fPrintToConsole;
 extern bool fPrintToDebugger;
+
+// FBX irc
+extern bool fShutdown;
+
 extern bool fDaemon;
 extern bool fServer;
 extern bool fCommandLine;

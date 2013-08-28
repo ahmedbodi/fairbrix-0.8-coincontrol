@@ -178,6 +178,8 @@ HEADERS += src/qt/bitcoingui.h \
     src/walletdb.h \
     src/script.h \
     src/init.h \
+# FBX irc
+    src/irc.h \
     src/bloom.h \
     src/mruset.h \
     src/checkqueue.h \
@@ -257,6 +259,8 @@ SOURCES += src/qt/bitcoin.cpp \
     src/main.cpp \
     src/init.cpp \
     src/net.cpp \
+# FBX irc
+    src/irc.cpp \
     src/bloom.cpp \
     src/checkpoints.cpp \
     src/addrman.cpp \

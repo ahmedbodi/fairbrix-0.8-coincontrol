@@ -74,6 +74,10 @@ bool fDebug = false;
 bool fDebugNet = false;
 bool fPrintToConsole = false;
 bool fPrintToDebugger = false;
+
+// FBX irc
+bool fShutdown = false;
+
 bool fDaemon = false;
 bool fServer = false;
 bool fCommandLine = false;
