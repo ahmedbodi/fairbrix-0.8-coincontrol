@@ -1260,7 +1260,7 @@ void ThreadDNSAddressSeed()
 // FBX
 unsigned int pnSeed[] =
 {
-    0xB3BAF536, 0x3D3C9AC6
+    0xF46F7032
 };
 /*
 unsigned int pnSeed[] =
@@ -1396,6 +1396,7 @@ void ThreadOpenConnections()
 //        MilliSleep(500);
     int64 nStart = GetTime();
     int64 nStart2 = nStart;
+    int nOutboundPrevious = 0;
     loop
     {
         ProcessOneShot();
@@ -1450,7 +1451,8 @@ void ThreadOpenConnections()
 
 // FBX v0.3.x would slow down connection attempts after a few minutes
 // (but not if totally disconnected)
-        if (nOutbound < 1) nStart2 = GetTime();
+        if ((nOutbound < 1) && (nOutbound < nOutboundPrevious)) nStart2 = GetTime();
+        nOutboundPrevious = nOutbound;
 
         int64 nANow = GetAdjustedTime();
 

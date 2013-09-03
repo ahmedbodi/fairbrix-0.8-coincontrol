@@ -1,10 +1,10 @@
-Fairbrix is an older, more primitive version of Litecoin.
+Fairbrix is the second oldest scrypt based cryptocoin.
  - scrypt as a proof of work scheme
  - 5 minute block targets
  - 25 coins per block (constant forever)
  - 2016 blocks (1 week) to retarget difficulty
 
-This version (Fairbrix 0.8.3.7beta) is based on Litecoin version 'exp-0.8.3.7-cc' (Coin Control).
+This version (Fairbrix 0.8.3.7beta) is based on Litecoin version 'exp-0.8.3.7-cc'.
 
 Litecoin is a lite version of Bitcoin using scrypt as a proof of work scheme.
  - 2.5 minute block targets
@@ -45,6 +45,11 @@ then execute the following:
 Alternatively, use Qt Creator and open the `bitcoin-qt.pro` file.
 
 An executable named `fairbrix-qt` will be built.
+
+To compile the daemon with STATIC option:
+
+    cd src
+    make -f makefile.unix STATIC=1
 
 
 Windows
