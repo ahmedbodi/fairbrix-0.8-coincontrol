@@ -171,8 +171,39 @@ int64 posvValueDiff;    // aggregate money inflow and outflow for all matching a
 int64 posvTxValue;      // output of one tx
 int posvSig;            // inflow or outflow
 int posvVerbose;
-int posvWarningCount;   // more than 1 address per output?
-int posvErrCount;       //
+int posvFastmode;
+int posvWarningCount;   // more than 1 address per output
+int posvErrCount;       // more than 1 address per output, vanitygen addresses used for oracle are affected
+
+// oracle related vars start here (not used in older test functions svdebugblock and svscanblocks)
+bool posv_fOracle;      // poll the oracle
+
+int posv_nMaturity;
+#define POSV_MATURITY_MAX 2
+int64 posv_nMaturityBlockStart[POSV_MATURITY_MAX] = {172000, 180000}; // TODO: use block time
+int64 posv_nMaturityBlockEnd[POSV_MATURITY_MAX] = {180000, 188000};
+std::string posv_strMaturityVanity[POSV_MATURITY_MAX] = {"TV138", "TV139"};
+std::string posv_strMaturityDesc[POSV_MATURITY_MAX] = {"20130831 22:00 EST", "20130930 22:00 EST"};
+
+int posv_nPair;
+#define POSV_PAIR_MAX 4
+#define POSV_CHOICE_MAX 10                                          // IMPORTANT: this can't be >10
+int64 posv_nOracleValuePerChoice[POSV_PAIR_MAX][POSV_CHOICE_MAX];   // voting results
+int64 posv_OraclePairDivisor[POSV_PAIR_MAX] = {1, 10, 100, 1000};   // to get the relevant digit
+
+// TODO: these should be p2p-listed via a 2nd set of votings, not hardcoded
+string posv_strOraclePairs[POSV_PAIR_MAX] = {"BTC/USD", "BTC/XRP", "LTC/BTC", "FBX/BTC"};
+std::string posv_strOracleResult[POSV_PAIR_MAX][POSV_CHOICE_MAX] =
+         {{"invalid", "don't know", ">250", ">200", ">150", ">125", "<=125", "<=100", "<=75", "<=50"},
+          {"invalid", "don't know", ">70000", ">40000", ">20000", ">10000", "<=10000", "<=5000", "<=3000", "<=2000"},
+          {"invalid", "don't know", ">0.04", ">0.03", ">0.025", ">0.02", "<=0.02", "<=0.015", "<=0.01", "<=0.0075"},
+          {"invalid", "don't know", ">0.00003", ">0.00002", ">0.00001", ">0.000005", "<=0.000005", "<=0.000003", "<=0.000002", "<=0.000001"}};
+std::string posv_strOracleImplied[POSV_PAIR_MAX][POSV_CHOICE_MAX] =
+         {{"invalid", "or don't care", "n/a", "<=250", "<=200", "<=150", ">100", ">75", ">50", "n/a"},
+          {"invalid", "or don't care", "n/a", "<=70000", "<=40000", "<=20000", ">5000", ">3000", ">2000", "n/a"},
+          {"invalid", "or don't care", "n/a", "<=0.04", "<=0.03", "<=0.025", ">0.015", ">0.01", ">0.0075", "n/a"},
+          {"invalid", "or don't care", "n/a", "<=0.00003", "<=0.00002", "<=0.00001", ">0.000003", ">0.000002", ">0.000001", "n/a"}};
+
 std::string strPosvTest;
 void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
 {
@@ -180,19 +211,22 @@ void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
     vector<CTxDestination> addresses;
     int nRequired;
 
-    if (posvVerbose)
+    int verbose = (posvFastmode ? 0 : posvVerbose);
+
+    if (verbose)
     {
         out.push_back(Pair("asm", scriptPubKey.ToString()));
         out.push_back(Pair("hex", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
     }
 
+// TODO: extra warning (could be a exploit)
     if (!ExtractDestinations(scriptPubKey, type, addresses, nRequired))
     {
         out.push_back(Pair("type", GetTxnOutputType(TX_NONSTANDARD)));
         return;
     }
 
-    if (posvVerbose)
+    if (verbose)
     {
         out.push_back(Pair("reqSigs", nRequired));
         out.push_back(Pair("type", GetTxnOutputType(type)));
@@ -208,7 +242,8 @@ void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
 
         fmatch = true;
         n++;
-        for (unsigned int i = 0; i < strPosvTest.length(); i++)
+        unsigned int l = strPosvTest.length();
+        for (unsigned int i = 0; i < l; i++)
         {
             if (s[i+1] != strPosvTest[i])
             {
@@ -216,12 +251,25 @@ void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
                 break;
             }
         }
-        if (fmatch) posvValueDiff += (posvTxValue * posvSig);
+        if (fmatch)
+        {
+            posvValueDiff += (posvTxValue * posvSig);
+            if (posv_fOracle)
+            {
+                int64 v = (posvTxValue / posv_OraclePairDivisor[posv_nPair]) % 10;
+                posv_nOracleValuePerChoice[posv_nPair][v] += (posvTxValue * posvSig);
+// todo: extra warning if POSV_CHOICE_MAX!=10 ?
+            }
+        }
     }
-    if (fmatch)
-        out.push_back(Pair("addresses (match detected)", a));
-    else
-        out.push_back(Pair("addresses", a));
+
+    if(!posvFastmode)
+    {
+        if (fmatch)
+            out.push_back(Pair("addresses (match detected)", a));
+        else
+            out.push_back(Pair("addresses", a));
+    }
 
     // notice outputs with many addresses
     if (n > 1)
@@ -232,11 +280,13 @@ void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
 }
 Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
 {
+    int verbose = (posvFastmode ? 0 : posvVerbose);
+
     Object result;
-    if (posvVerbose) result.push_back(Pair("hash", block.GetHash().GetHex()));
+    if (verbose) result.push_back(Pair("hash", block.GetHash().GetHex()));
     CMerkleTx txGen(block.vtx[0]);
     txGen.SetMerkleBranch(&block);
-    if (posvVerbose)
+    if (verbose)
     {
         result.push_back(Pair("confirmations", (int)txGen.GetDepthInMainChain()));
         result.push_back(Pair("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION)));
@@ -249,19 +299,37 @@ Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
     BOOST_FOREACH(const CTransaction&tx, block.vtx)
     {
         i1++;
+        if (!posvFastmode)
+        {
         result.push_back(Pair("transaction#", i1));
         result.push_back(Pair("tx hash", tx.GetHash().GetHex()));
+        }
+        else
+        {
+            // we probably don't need to do this
+            tx.GetHash().GetHex();
+        }
 
         // code from TxToJSON
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
         {
             if (tx.IsCoinBase())
-                result.push_back(Pair("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
+                // always do this (error 'No information available about transaction' if not)
+                if (!posvFastmode)
+                    result.push_back(Pair("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
+                else
+                    HexStr(txin.scriptSig.begin(), txin.scriptSig.end());
             else
             {
-                result.push_back(Pair("input from txid", txin.prevout.hash.GetHex()));
+                if (!posvFastmode)
+                    result.push_back(Pair("input from txid", txin.prevout.hash.GetHex()));
+                // we probably don't need to do this
+                else
+                    txin.prevout.hash.GetHex();
+
                 int64 vout2 = (boost::int64_t)txin.prevout.n;
-                result.push_back(Pair("begin processing previous tx, vout", vout2));
+                if (!posvFastmode)
+                    result.push_back(Pair("begin processing previous tx, vout", vout2));
 
                 // backtrace transactions if not mined (need to know where the coins coming from)
                 CTransaction tx2;
@@ -269,12 +337,15 @@ Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
                 if (!GetTransaction(txin.prevout.hash, tx2, hashBlock2, true))
                     throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
+                if (!posvFastmode)
+                {
                 BOOST_FOREACH(const CTxIn& txin2, tx2.vin)
                 {
-                    if (tx2.IsCoinBase())
-                        result.push_back(Pair("previous tx: coinbase", HexStr(txin2.scriptSig.begin(), txin2.scriptSig.end())));
-                    else
-                        result.push_back(Pair("previous tx: input from txid", txin2.prevout.hash.GetHex()));
+                        if (tx2.IsCoinBase())
+                            result.push_back(Pair("previous tx: coinbase", HexStr(txin2.scriptSig.begin(), txin2.scriptSig.end())));
+                        else
+                            result.push_back(Pair("previous tx: input from txid", txin2.prevout.hash.GetHex()));
+                }
                 }
 
                 // check outputs of each 'previous' transaction (to count coins sent *from* special addresses)
@@ -283,19 +354,22 @@ Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
                 for (unsigned int i = 0; i < tx2.vout.size(); i++)
                 {
                     const CTxOut& txout4 = tx2.vout[i];
-                    result.push_back(Pair("previous tx output#", (int) i));
+                    if (!posvFastmode)
+                        result.push_back(Pair("previous tx output#", (int) i));
                     posvTxValue = txout4.nValue;
-                    result.push_back(Pair("value", ValueFromAmount(txout4.nValue)));
+                    if (!posvFastmode)
+                        result.push_back(Pair("value", ValueFromAmount(txout4.nValue)));
 
                     if (i != vout2) continue;
 
                     Object o4;
                     posvScriptPubKeyToJSON(txout4.scriptPubKey, o4);
-                    result.push_back(Pair("scriptPubKey previous tx", o4));
+                    if (!posvFastmode)
+                        result.push_back(Pair("scriptPubKey previous tx", o4));
                 }
                 // end processing 'previous' tx
 
-                if (posvVerbose)
+                if (verbose)
                 {
                     Object o;
                     o.push_back(Pair("asm", txin.scriptSig.ToString()));
@@ -303,7 +377,7 @@ Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
                     result.push_back(Pair("scriptSig", o));
                 }
             }
-            if (posvVerbose) result.push_back(Pair("sequence", (boost::int64_t)txin.nSequence));
+            if (verbose) result.push_back(Pair("sequence", (boost::int64_t)txin.nSequence));
         }
 
         // check outputs of each transaction (to count coins sent *to* special addresses)
@@ -312,18 +386,19 @@ Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
         for (unsigned int i = 0; i < tx.vout.size(); i++)
         {
             const CTxOut& txout = tx.vout[i];
-            result.push_back(Pair("output#", (int) i));
+            if (!posvFastmode)
+                result.push_back(Pair("output#", (int) i));
             posvTxValue = txout.nValue;
-            result.push_back(Pair("value", ValueFromAmount(txout.nValue)));
+            if (!posvFastmode)
+                result.push_back(Pair("value", ValueFromAmount(txout.nValue)));
             Object o;
             posvScriptPubKeyToJSON(txout.scriptPubKey, o);
-            result.push_back(Pair("scriptPubKey", o));
-
+            if (!posvFastmode)
+                result.push_back(Pair("scriptPubKey", o));
         }
-
     }
 
-    if (posvVerbose)
+    if (verbose)
     {
         result.push_back(Pair("time", (boost::int64_t)block.GetBlockTime()));
         result.push_back(Pair("nonce", (boost::uint64_t)block.nNonce));
@@ -347,9 +422,12 @@ Value svdebugblock(const Array& params, bool fHelp)
             "of addresses containing <vanity string>.");
 
     posvVerbose = params[1].get_int();
+    posvFastmode = 0;
     posvValueDiff = 0;
     posvWarningCount = 0;
     posvErrCount = 0;
+    posv_fOracle = false;
+    posv_nPair = posv_nMaturity = 0;
 
     int nHeight = params[0].get_int();
     if (nHeight < 0 || nHeight > nBestHeight)
@@ -381,9 +459,12 @@ Value svscanblocks(const Array& params, bool fHelp)
             "containing <vanity string>.");
 
     posvVerbose = 0;
+    posvFastmode = 1;
     posvValueDiff = 0;
     posvWarningCount = 0;
     posvErrCount = 0;
+    posv_fOracle = false;
+    posv_nPair = posv_nMaturity = 0;
 
     int nHeight0 = params[0].get_int();
     int nHeight1 = params[1].get_int();
@@ -408,6 +489,191 @@ Value svscanblocks(const Array& params, bool fHelp)
     if (posvWarningCount) result2.push_back(Pair("outputs with more than 1 addr", posvWarningCount));
     if (posvErrCount) result2.push_back(Pair("matching outputs with more than 1 addr", posvErrCount));
 
+    return result2;
+}
+Value svgetoracle(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 2)
+        throw runtime_error(
+            "svgetoracle <pair index> [voting index=0]\n"
+            "(use 'svlistpairs' to list available currency pairs,\n"
+            " and 'svlistvotings' to list available votings/maturities)");
+
+    posvVerbose = 0;
+    posvFastmode = 1;
+    posvValueDiff = 0;
+    posvWarningCount = 0;
+    posvErrCount = 0;
+    posv_fOracle = true;
+
+    // clear all votes
+    for (unsigned int i = 0; i < POSV_PAIR_MAX; i++)
+        for (unsigned int j = 0; j < 10; j++)
+            posv_nOracleValuePerChoice[i][j] = 0;
+
+    posv_nPair = params[0].get_int();
+    if ((posv_nPair < 0) || (posv_nPair >= POSV_PAIR_MAX))
+        throw runtime_error("Pair index out of range.");
+
+    if (params.size() >= 2)
+        posv_nMaturity = params[1].get_int();
+    else
+        posv_nMaturity = 0;
+    if ((posv_nMaturity < 0) || (posv_nMaturity >= POSV_MATURITY_MAX))
+        throw runtime_error("Maturity number out of range.");
+
+    strPosvTest = posv_strMaturityVanity[posv_nMaturity];
+    int nHeight0 = posv_nMaturityBlockStart[posv_nMaturity];
+    int nHeight1 = posv_nMaturityBlockEnd[posv_nMaturity];
+
+    // voting in progress
+    if (nBestHeight < nHeight1)
+        nHeight1 = nBestHeight;
+
+    if (nHeight1 < nHeight0 || nHeight0 < 0 || nHeight1 > nBestHeight)
+        throw runtime_error("Block number(s) out of range.");
+    if (strPosvTest.length() > 10)
+        throw runtime_error("vanity string too long");
+
+    for (int nHeight = nHeight0; nHeight <= nHeight1; nHeight++)
+    {
+        CBlockIndex* pblockindex = FindBlockByHeight(nHeight);
+        CBlock block;
+        block.ReadFromDisk(pblockindex);
+
+        posvblockToJSON(block, pblockindex);
+    }
+
+    Object result2;
+    result2.push_back(Pair("total voting coins", (double)posvValueDiff/(double)COIN));
+    if (posvWarningCount) result2.push_back(Pair("outputs with more than 1 addr", posvWarningCount));
+    if (posvErrCount) result2.push_back(Pair("matching outputs with more than 1 addr", posvErrCount));
+
+    result2.push_back(Pair(posv_strOraclePairs[posv_nPair], posv_strMaturityDesc[posv_nMaturity]));
+
+    // skip 'invalid' choice (i==0)
+    for (unsigned int i = 1; i < POSV_CHOICE_MAX; i++)
+    {
+        int64 v = posv_nOracleValuePerChoice[posv_nPair][i];
+        if (v > 0)
+        {
+            result2.push_back(Pair(" ", " "));
+            result2.push_back(Pair("result", posv_strOracleResult[posv_nPair][i]));
+            result2.push_back(Pair("implied", posv_strOracleImplied[posv_nPair][i]));
+            result2.push_back(Pair("voting coins", (double)v/(double)COIN));
+        }
+    }
+
+    return result2;
+}
+Value svlistvotings(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "svlistvotings [verbose=0]\n"
+            "Lists all votings/maturity dates and 'special addresses'\n"
+            "available for the proof of stake voting system.\n"
+            "(verbose=0 to list only votings currently in progress)");
+
+    bool fVerbose = false;
+    if (params.size() > 0)
+        fVerbose = (params[0].get_int() != 0);
+
+    Object result2;
+    result2.push_back(Pair("list of available maturities, total count", int(POSV_MATURITY_MAX)));
+
+    for (unsigned int i = 0; i < POSV_MATURITY_MAX; i++)
+    {
+        result2.push_back(Pair(" ", " "));
+        result2.push_back(Pair("index", int(i)));
+        result2.push_back(Pair("date and time", posv_strMaturityDesc[i]));
+
+        int state = 0;
+        if (nBestHeight < posv_nMaturityBlockStart[i])
+        {
+            result2.push_back(Pair("status", "voting not yet started"));
+        }
+        else if (nBestHeight < posv_nMaturityBlockEnd[i])
+        {
+            result2.push_back(Pair("status", "voting in progress"));
+            state = 1;
+        }
+        else
+        {
+            result2.push_back(Pair("status", "voting closed"));
+            state = 2;
+        }
+        if (!fVerbose && state != 1) continue;
+
+        if (state == 1)
+            result2.push_back(Pair("basics", "vote by sending coins to an address generated with vanitygen"));
+        string s = "vanitygen -X95 f" + posv_strMaturityVanity[i];
+        result2.push_back(Pair("vanitygen command", s));
+        result2.push_back(Pair("voting start (block height)", posv_nMaturityBlockStart[i]));
+        result2.push_back(Pair("voting start (block time)", "n/a"));
+        result2.push_back(Pair("voting end (block height)", posv_nMaturityBlockEnd[i]));
+        result2.push_back(Pair("voting end (block time)", "n/a"));
+    }
+
+    return result2;
+}
+Value svlistpairs(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "svlistpairs [verbose=1]\n"
+            "Lists all currency pairs available\n"
+            "for the proof of stake voting system,\n"
+            "and voting instructions for each pair.");
+
+    bool fVerbose = true;
+    if (params.size() > 0)
+        fVerbose = (params[0].get_int() != 0);
+
+    Object result2;
+    result2.push_back(Pair("list of available pairs, total count", int(POSV_PAIR_MAX)));
+    if (fVerbose)
+        result2.push_back(Pair("basics", "least significant digits of amount sent are used for voting"));
+
+    for (unsigned int i = 0; i < POSV_PAIR_MAX; i++)
+    {
+        result2.push_back(Pair(" ", " "));
+        result2.push_back(Pair("index", int(i)));
+        result2.push_back(Pair("name", posv_strOraclePairs[i]));
+
+        if (fVerbose)
+        {
+        if (i == 0)
+            result2.push_back(Pair("digit for voting", "8th after the decimal point (single satoshis)"));
+        else if (i == 1)
+            result2.push_back(Pair("digit for voting", "7th after the decimal point (satoshis * 10)"));
+        else if (i == 2)
+            result2.push_back(Pair("digit for voting", "6th after the decimal point (satoshis * 100)"));
+        else if (i == 3)
+            result2.push_back(Pair("digit for voting", "5th after the decimal point (satoshis * 1000)"));
+        else if (i == 4)
+            result2.push_back(Pair("digit for voting", "4th after the decimal point (satoshis * 10000)"));
+        else if (i == 5)
+            result2.push_back(Pair("digit for voting", "3rd after the decimal point (1/1000 coins)"));
+        else if (i == 6)
+            result2.push_back(Pair("digit for voting", "2nd after the decimal point (1/100 coins)"));
+        else if (i == 7)
+            result2.push_back(Pair("digit for voting", "1st after the decimal point (1/10 coins)"));
+        }
+
+        result2.push_back(Pair("available choices", "1..9"));
+        for (unsigned int i2 = 1; i2 < POSV_CHOICE_MAX; i2++)
+        {
+            string s = posv_strOracleResult[i][i2];
+            if (i2 == 2)
+                s = s + ", no upper limit";
+            else if (i2 == 9)
+                s = s + ", no lower limit";
+            else
+                s = s + ", " + posv_strOracleImplied[i][i2];
+            result2.push_back(Pair(s, int(i2)));
+        }
+    }
     return result2;
 }
 

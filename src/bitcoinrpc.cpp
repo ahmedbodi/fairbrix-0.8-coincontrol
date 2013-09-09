@@ -241,6 +241,9 @@ static const CRPCCommand vRPCCommands[] =
 // FBX proof of stake voting test
     { "svdebugblock",           &svdebugblock,           false,     false },
     { "svscanblocks",           &svscanblocks,           false,     false },
+    { "svgetoracle",            &svgetoracle,            false,     false },
+    { "svlistvotings",          &svlistvotings,          false,     false },
+    { "svlistpairs",            &svlistpairs,            false,     false },
 
     { "gettransaction",         &gettransaction,         false,     false },
     { "listtransactions",       &listtransactions,       false,     false },
@@ -1166,6 +1169,10 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "svdebugblock"           && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "svscanblocks"           && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "svscanblocks"           && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svgetoracle"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svgetoracle"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svlistvotings"          && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svlistpairs"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
 
     if (strMethod == "move"                   && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "move"                   && n > 3) ConvertTo<boost::int64_t>(params[3]);
