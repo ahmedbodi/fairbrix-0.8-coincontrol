@@ -161,6 +161,41 @@ Value getblock(const Array& params, bool fHelp)
     return blockToJSON(block, pblockindex);
 }
 
+// FBX proof of stake voting test
+Value svgetblock(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 2)
+        throw runtime_error(
+            "svgetblock <block index> [unix time]\n"
+            "Returns details of block in best-block-chain at <index>.\n"
+            "If time is given, search forward for first block with higher time stamp");
+
+    int nHeight = params[0].get_int();
+    if (nHeight < 0 || nHeight > nBestHeight)
+        throw runtime_error("Block number out of range.");
+
+    int64 t = 0;
+    if (params.size() > 1)
+        t = params[1].get_int();
+
+    CBlock block;
+    CBlockIndex* pblockindex = FindBlockByHeight(nHeight);
+
+    if (t)
+        while (pblockindex->GetBlockTime() < t && nHeight < nBestHeight)
+        {
+            nHeight++;
+
+//            pblockindex = FindBlockByHeight(nHeight);
+            pblockindex = pblockindex->pnext;
+        }
+
+    block.ReadFromDisk(pblockindex);
+
+    return blockToJSON(block, pblockindex);
+}
+
+
 Value gettxoutsetinfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)

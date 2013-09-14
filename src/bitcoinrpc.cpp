@@ -244,6 +244,8 @@ static const CRPCCommand vRPCCommands[] =
     { "svgetoracle",            &svgetoracle,            false,     false },
     { "svlistvotings",          &svlistvotings,          false,     false },
     { "svlistpairs",            &svlistpairs,            false,     false },
+    { "svcalc",                 &svcalc,                 false,     false },
+    { "svgetblock",             &svgetblock,             false,     false },
 
     { "gettransaction",         &gettransaction,         false,     false },
     { "listtransactions",       &listtransactions,       false,     false },
@@ -1173,6 +1175,10 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "svgetoracle"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "svlistvotings"          && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "svlistpairs"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svlistpairs"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svcalc"                 && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svgetblock"             && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svgetblock"             && n > 1) ConvertTo<boost::int64_t>(params[1]);
 
     if (strMethod == "move"                   && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "move"                   && n > 3) ConvertTo<boost::int64_t>(params[3]);
