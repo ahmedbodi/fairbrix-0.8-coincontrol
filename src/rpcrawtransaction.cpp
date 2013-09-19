@@ -167,14 +167,15 @@ Value getrawtransaction(const Array& params, bool fHelp)
 }
 
 // FBX proof of stake voting test
-int64 posvValueDiff;    // aggregate money inflow and outflow for all matching addresses
+int64 posvValueDiff;    // aggregate money inflow and outflow for all addresses matching the vanity test string
 int64 posvTxValue;      // output of one tx
 int posvSig;            // inflow or outflow
 int posvVerbose;
 int posvFastmode;
 int posvWarningCount;   // more than 1 address per output
 int posvErrCount;       // more than 1 address per output, vanitygen addresses used for oracle are affected
-std::string strPosvTest;
+std::string strPosvTest;// vanity test string, now generated from hash of starting block
+                        // (so it's not known in advance)
 
 // oracle related vars start here (not used in older test functions svdebugblock and svscanblocks)
 bool posv_fOracle;      // poll the oracle
@@ -188,19 +189,16 @@ int64 posv_nMaturityTime[POSV_MATURITY_MAX] = {1377979200, 1380571200, 138325320
 int64 posv_nMaturityBlockStart[POSV_MATURITY_MAX] = {168000, 173110, 178000};
 // TODO: use block time for voting end
 int64 posv_nMaturityBlockEnd[POSV_MATURITY_MAX] = {180000, 188000, 196000};
-// vanity string is now generated from hash of starting block (so it's not known in advance)
-//std::string posv_strMaturityVanity[POSV_MATURITY_MAX] = {"TV138", "TV139"};
-//std::string posv_strMaturityVanity[POSV_MATURITY_MAX] = {"W9ZFM", "X8HmP"};
 
 int posv_nPair;
 #define POSV_PAIR_MAX 4
-#define POSV_CHOICE_MAX 10                                          // IMPORTANT: this can't be >10
+#define POSV_CHOICE_MAX 10                                          // this shouldn't be !=10
 int64 posv_nOracleValuePerChoice[POSV_PAIR_MAX][POSV_CHOICE_MAX];   // voting results
-//int64 posv_OraclePairDivisor[POSV_PAIR_MAX] = {1, 10, 100, 1000};   // to get the relevant digit
 
 // base58.h included here, but not in rpcblockchain.cpp
 //static const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 int posvSanCount = 0; // failed sanity test
+int posvCritCount = 0; // other critical error
 
 // "checkpoint" for listing codes -- amounts of satoshis to be parked at a special vanitygen address
 // to list anything (not yet implemented)
@@ -209,12 +207,10 @@ int64 posv_nPairName[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{20613063, 20615077, 0
                                                           {20613063, 20615077, 139414004, 0},
                                                           {20613063, 20615077, 139414004, 0}};
 
-// int posv_nPairType[POSV_PAIR_MAX] = {0, 0, 0, 0};
-
 // the following 3 arrays are only used in posv_strDescOracleResult
 int posv_nPairScale[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{5, 2, 0, 0},
                                                          {5, 2, 4, 0},
-                                                         {5, 2, 4, 2}};
+                                                         {5, 2, 4, 0}};
 int posv_nPairMidpoint[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{11, 15,  0, 0},
                                                             {11, 16,  38, 0},
                                                             {11, 16,  38, 0}};
@@ -225,26 +221,22 @@ const double posv_Strikes[7][64] =
  {0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 3000000, 1000000, 300000, 100000, 30000, 10000,   3000, 1000, 300, 100, 30, 10, 3,
   1, 0.3, 0.1, 0.03, 0.01, 0.003, 0.001, 0.0003,   0.0001, 0.00003, 0.00001, 0.000003, 0.000001, 0.0000003, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0 },
 
-// 4 strikes per order of magnitude (like initial BTCXRP test)
-//max strike diff 1/2  (e.g. 100/200, 500/1000)
+// 4 strikes per order of magnitude, max strike diff 1/2  (e.g. 100/200, 500/1000)
  {0, 0, 0, 0, 0, 0, 0, 2000000,   1000000, 500000, 300000, 200000, 100000, 50000, 30000, 20000,   10000, 5000, 3000, 2000, 1000, 500, 300, 200,   100, 50, 30, 20, 10, 5, 3, 2,
   1, 0.5, 0.3, 0.2, 0.1, 0.05, 0.03, 0.02,    0.01, 0.005, 0.003, 0.002, 0.001, 0.0005, 0.0003, 0.0002,   0.0001, 0.00005, 0.00003, 0.00002, 0.00001, 0.000005, 0.000003, 0.000002,    0.000001, 0, 0, 0, 0, 0, 0, 0 },
 
  {0, 0, 100000, 75000, 50000, 30000, 20000, 15000,    10000, 7500, 5000, 3000, 2000, 1500, 1000, 750,    500, 300, 200, 150, 100, 75, 50, 30,    20, 15, 10, 7.5, 5, 3, 2, 1.5,
   1, 0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.05,    0.03, 0.02, 0.015, 0.01, 0.0075, 0.005, 0.003, 0.002,     0.0015, 0.001, 0.00075, 0.0005, 0.0003, 0.0002, 0.00015, 0.0001,   0.000075, 0.00005, 0.00003, 0.00002, 0, 0, 0, 0 },
 
-// 8 strikes per order of magnitude (like initial LTCBTC test)
-//max strike diff 2/3 (e.g. 50/75, 100/150)
+// 8 strikes per order of magnitude, /max strike diff 2/3 (e.g. 50/75, 100/150)
  {0, 0, 0, 0, 0, 0, 2000, 1500,   1000, 750, 500, 400, 300, 250, 200, 150,    100, 75, 50, 40, 30, 25, 20, 15,    10, 7.5, 5, 4, 3, 2.5, 2, 1.5,
   1, 0.75, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15,   0.1, 0.075, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015,   0.01, 0.0075, 0.005, 0.004, 0.003, 0.0025, 0.002, 0.0015,   0.001, 0.00075, 0, 0, 0, 0, 0, 0 },
 
-// 10 strikes per order of magnitude (like initial BTCUSD test)
-//max strike diff 3/4 (e.g. 750/1000, 300/400, 150/200)
+// 10 strikes per order of magnitude, max strike diff 3/4 (e.g. 750/1000, 300/400, 150/200)
  {1500, 1250, 1000, 750, 600, 500, 400, 300,    250, 200, 150, 125, 100, 75, 60, 50,    40, 30, 25, 20, 15, 12.5, 10, 7.5,    6, 5, 4, 3, 2.5, 2, 1.5, 1.25,
   1, 0.75, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2,    0.15, 0.125, 0.1, 0.075, 0.06, 0.05, 0.04, 0.03,    0.025, 0.02, 0.015, 0.0125, 0.01, 0.0075, 0.006, 0.005,    0.004, 0.003, 0.0025, 0.002, 0.0015, 0.00125, 0.001, 0.00075 },
 
-// 13 strikes per order of magnitude
-//max strike diff 4/5 (e.g. 40/50, 80/100, 100/125, 200/250)
+// 13 strikes per order of magnitude, max strike diff 4/5 (e.g. 40/50, 80/100, 100/125, 200/250)
  {300, 250, 200, 175, 150, 125, 100, 80,    70, 60, 50, 40, 35, 30, 25, 20,    17.5, 15, 12.5, 10, 8, 7, 6, 5,    4, 3.5, 3, 2.5, 2, 1.75, 1.5, 1.25,
   1, 0.8, 0.7, 0.6, 0.5, 0.4, 0.35, 0.3,    0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.08, 0.07,    0.06, 0.05, 0.04, 0.035, 0.03, 0.025, 0.02, 0.0175,    0.015, 0.0125, 0.01, 0.008, 0.007, 0.006, 0.005, 0.004 }
 };
@@ -318,16 +310,19 @@ static string posv_strDynPairName(int i, int ivoting)
 static string posv_strDescOracleResult(int ivoting, int i, int i2, bool show_result, bool show_implied)
 {
     string sd = "error";
-    if (ivoting < 0 || ivoting > POSV_MATURITY_MAX || i < 0 || i >= POSV_PAIR_MAX || i2 < 0 || i2 >= POSV_CHOICE_MAX)
+    if (ivoting < 0 || ivoting >= POSV_MATURITY_MAX || i < 0 || i >= POSV_PAIR_MAX || i2 < 0 || i2 >= POSV_CHOICE_MAX)
         return sd;
 
     if (i2 < 2)
     {
-        if (i2 == 0)
-            sd = "invalid";
-        else //if (i2 == 1)
-            sd = "don't know or don't care";
-
+        sd = " ";
+        if (show_result)
+        {
+          if (i2 == 0)
+              sd = "invalid";
+          else //if (i2 == 1)
+              sd = "don't know or don't care";
+        }
         return sd;
     }
 
@@ -366,6 +361,53 @@ static string posv_strDescOracleResult(int ivoting, int i, int i2, bool show_res
 
     return sd;
 }
+static int posv_nMaturityBlockEndEx(int i)
+{
+    if (i < 0 || i >= POSV_MATURITY_MAX)
+        return 0;
+
+    int nHeight = posv_nMaturityBlockEnd[i];
+
+    // voting is never closed until 30 days after maturity date
+    if (nBestHeight > nHeight)
+    {
+        int64 t = posv_nMaturityTime[i] + (30 * 24 * 3600);
+        CBlockIndex* pblockindex = FindBlockByHeight(nHeight);
+
+        while (pblockindex->GetBlockTime() < t && nHeight < nBestHeight)
+        {
+            nHeight++;
+            pblockindex = pblockindex->pnext;
+        }
+    }
+
+    return nHeight;
+}
+#define POSV_STATE_NOTYETOPEN 0
+#define POSV_STATE_WARMUP 1
+#define POSV_STATE_INPROGRESS 2
+#define POSV_STATE_CLOSED 3
+static int posv_nGetVotingState(int i)
+{
+    if (i < 0)
+        return POSV_STATE_CLOSED;
+    if (i >= POSV_MATURITY_MAX)
+        return POSV_STATE_NOTYETOPEN;
+
+    if (nBestHeight < posv_nMaturityBlockStart[i])
+        return POSV_STATE_NOTYETOPEN;
+
+    if (nBestHeight <= posv_nMaturityBlockEndEx(i))
+    {
+        CBlockIndex* pblockindex = FindBlockByHeight(nBestHeight);
+        if (pblockindex->GetBlockTime() < posv_nMaturityTime[i])
+            return POSV_STATE_WARMUP;
+        else
+            return POSV_STATE_INPROGRESS;
+    }
+
+    return POSV_STATE_CLOSED;
+}
 void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
 {
     txnouttype type;
@@ -380,9 +422,10 @@ void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
         out.push_back(Pair("hex", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
     }
 
-// TODO: extra warning (could be a exploit)
     if (!ExtractDestinations(scriptPubKey, type, addresses, nRequired))
     {
+        posvCritCount++; // possible exploit
+
         out.push_back(Pair("type", GetTxnOutputType(TX_NONSTANDARD)));
         return;
     }
@@ -421,14 +464,11 @@ void posvScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
                 int divisor = 1;
                 for (unsigned int k = 0; k < POSV_PAIR_MAX; k++)
                 {
-                    // get votes for all pairs
+                    // get oracle answer for all pairs
                     int64 v = (posvTxValue / divisor) % 10;
                     posv_nOracleValuePerChoice[k][v] += (posvTxValue * posvSig);
                     divisor *= 10;
                 }
-// get votes for 1 pair
-//                int64 v = (posvTxValue / posv_OraclePairDivisor[posv_nPair]) % 10;
-//                posv_nOracleValuePerChoice[posv_nPair][v] += (posvTxValue * posvSig);
             }
         }
     }
@@ -594,8 +634,7 @@ Value svdebugblock(const Array& params, bool fHelp)
     posvVerbose = params[1].get_int();
     posvFastmode = 0;
     posvValueDiff = 0;
-    posvWarningCount = 0;
-    posvErrCount = 0;
+    posvWarningCount = posvErrCount = posvCritCount = 0;
     posv_fOracle = false;
     posv_nPair = posv_nMaturity = 0;
 
@@ -616,6 +655,7 @@ Value svdebugblock(const Array& params, bool fHelp)
     result.push_back(Pair("total balance change", (double)posvValueDiff/(double)COIN));
     if (posvWarningCount) result.push_back(Pair("outputs with more than 1 addr", posvWarningCount));
     if (posvErrCount) result.push_back(Pair("matching outputs with more than 1 addr", posvErrCount));
+    if (posvCritCount) result.push_back(Pair("illegible tx's", posvCritCount));
 
     return result;
 }
@@ -631,8 +671,7 @@ Value svscanblocks(const Array& params, bool fHelp)
     posvVerbose = 0;
     posvFastmode = 1;
     posvValueDiff = 0;
-    posvWarningCount = 0;
-    posvErrCount = 0;
+    posvWarningCount = posvErrCount = posvCritCount = 0;
     posv_fOracle = false;
     posv_nPair = posv_nMaturity = 0;
 
@@ -658,22 +697,26 @@ Value svscanblocks(const Array& params, bool fHelp)
     result2.push_back(Pair("total balance change", (double)posvValueDiff/(double)COIN));
     if (posvWarningCount) result2.push_back(Pair("outputs with more than 1 addr", posvWarningCount));
     if (posvErrCount) result2.push_back(Pair("matching outputs with more than 1 addr", posvErrCount));
+    if (posvCritCount) result2.push_back(Pair("illegible tx's", posvCritCount));
 
     return result2;
 }
 Value svgetoracle(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (fHelp || params.size() > 2)
         throw runtime_error(
-            "svgetoracle <voting index> [pair index]\n"
-            "(use 'svlistpairs' to list available currency pairs,\n"
-            " and 'svlistvotings' to list available votings/maturities)");
+            "svgetoracle [voting index] [pair index]\n"
+            "Returns the oracle's answer for a given maturity,\n"
+            "as determined by the proof of stake voting system.\n"
+            "If no voting index is given, returns a concise answer\n"
+            "for last closed voting.\n"
+            "(Use 'svlistpairs' to list available currency pairs.\n"
+            " Use 'svlistvotings' to list available votings/maturities)");
 
     posvVerbose = 0;
     posvFastmode = 1;
     posvValueDiff = 0;
-    posvWarningCount = 0;
-    posvErrCount = 0;
+    posvWarningCount = posvErrCount = posvCritCount = posvSanCount = 0;
     posv_fOracle = true;
 
     // clear all votes
@@ -681,9 +724,21 @@ Value svgetoracle(const Array& params, bool fHelp)
         for (unsigned int j = 0; j < 10; j++)
             posv_nOracleValuePerChoice[i][j] = 0;
 
-    posv_nMaturity = params[0].get_int();
-    if ((posv_nMaturity < 0) || (posv_nMaturity >= POSV_MATURITY_MAX))
-        throw runtime_error("Maturity number out of range.");
+    // get voting index
+    posv_nMaturity = 0;
+    if (params.size() >= 1)
+    {
+        posv_nMaturity = params[0].get_int();
+        if ((posv_nMaturity < 0) || (posv_nMaturity >= POSV_MATURITY_MAX))
+            throw runtime_error("Maturity number out of range.");
+    }
+    // no user input -- use last "closed"
+    else
+    {
+        for (unsigned int j = 0; j < POSV_MATURITY_MAX; j++)
+            if (posv_nGetVotingState(j) >= POSV_STATE_CLOSED)
+                posv_nMaturity = j;
+    }
 
     posv_nPair = 0;
     unsigned int nPairMin = 0;
@@ -699,12 +754,13 @@ Value svgetoracle(const Array& params, bool fHelp)
             throw runtime_error("Nothing listed.");
     }
 
-//    strPosvTest = posv_strMaturityVanity[posv_nMaturity];
+    bool fVerbose = params.size() < 1 ? false : true;
+
     if (!svblockhashtovanity(posv_nMaturityBlockStart[posv_nMaturity])) // calculates strPosvTest
         throw runtime_error("Couldn't get vanitygen string.");
 
     int nHeight0 = posv_nMaturityBlockStart[posv_nMaturity];
-    int nHeight1 = posv_nMaturityBlockEnd[posv_nMaturity];
+    int nHeight1 = posv_nMaturityBlockEndEx(posv_nMaturity);
 
     // voting in progress
     if (nBestHeight < nHeight1)
@@ -729,8 +785,13 @@ Value svgetoracle(const Array& params, bool fHelp)
 
     result2.push_back(Pair("maturity", posv_strMaturityDesc[posv_nMaturity]));
     result2.push_back(Pair("total voting coins", (double)posvValueDiff/(double)COIN));
+    if (posv_nGetVotingState(posv_nMaturity) >= POSV_STATE_CLOSED)
+        result2.push_back(Pair("voting closed", "the results are final"));
+
     if (posvWarningCount) result2.push_back(Pair("outputs with more than 1 addr", posvWarningCount));
     if (posvErrCount) result2.push_back(Pair("matching outputs with more than 1 addr", posvErrCount));
+    if (posvCritCount) result2.push_back(Pair("illegible tx's", posvCritCount));
+    if (posvSanCount) result2.push_back(Pair("sanity violations", posvSanCount));
 
     for (unsigned int j = nPairMin; j <= nPairMax; j++)
     {
@@ -740,17 +801,36 @@ Value svgetoracle(const Array& params, bool fHelp)
         result2.push_back(Pair(" ", " "));
         result2.push_back(Pair("name", posv_strDynPairName(posv_nPair, posv_nMaturity)));
 
-        // skip 'invalid' choice (i==0)
+        // determine winner for concise list
+        // (skip 'invalid' choice i==0)
+        unsigned int imax = 1;
+        int64 vmax = 0;
+        if (!fVerbose)
+        {
+            for (unsigned int i = 1; i < POSV_CHOICE_MAX; i++)
+            {
+                int64 v = posv_nOracleValuePerChoice[posv_nPair][i];
+                if (v > vmax)
+                {
+                    vmax = v;
+                    imax = i;
+                }
+            }
+        }
+
+        int nResults = 0;
         for (unsigned int i = 1; i < POSV_CHOICE_MAX; i++)
         {
             int64 v = posv_nOracleValuePerChoice[posv_nPair][i];
-            if (v > 0)
+            if ((v > 0) && (fVerbose || i == imax))
             {
-                result2.push_back(Pair("result", posv_strDescOracleResult(posv_nMaturity, posv_nPair, i, true, false)));
-                result2.push_back(Pair("implied", posv_strDescOracleResult(posv_nMaturity, posv_nPair, i, false, true)));
+                result2.push_back(Pair("result", posv_strDescOracleResult(posv_nMaturity, posv_nPair, i, true, true)));
                 result2.push_back(Pair("voting coins", (double)v/(double)COIN));
+                nResults++;
             }
         }
+        if (!nResults)
+            result2.push_back(Pair("no result", "no votes found"));
     }
 
     return result2;
@@ -760,57 +840,57 @@ Value svlistvotings(const Array& params, bool fHelp)
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "svlistvotings [verbose=0]\n"
-            "Lists all votings/maturity dates and 'special addresses'\n"
-            "available for the proof of stake voting system.\n"
-            "(verbose=0 to list only votings currently in progress)");
+            "Lists all votings/maturity dates and info about\n"
+            "'special addresses' for the proof of stake voting system.\n"
+            "If verbose=1, returns info even if a voting is closed.");
 
     bool fVerbose = false;
     if (params.size() > 0)
         fVerbose = (params[0].get_int() != 0);
 
     Object result2;
-    result2.push_back(Pair("list of available maturities, total count", int(POSV_MATURITY_MAX)));
+    result2.push_back(Pair("available maturities", int(POSV_MATURITY_MAX)));
 
     for (unsigned int i = 0; i < POSV_MATURITY_MAX; i++)
     {
         result2.push_back(Pair(" ", " "));
         result2.push_back(Pair("index", int(i)));
-        result2.push_back(Pair("date", posv_strMaturityDesc[i]));
-        result2.push_back(Pair("time", posv_nMaturityTime[i]));
+        result2.push_back(Pair("maturity date", posv_strMaturityDesc[i]));
 
-        int state = 0;
-        if (nBestHeight < posv_nMaturityBlockStart[i])
+        int state = posv_nGetVotingState(i);
+
+        if (state == POSV_STATE_NOTYETOPEN)
+            result2.push_back(Pair("voting status", "not yet started"));
+        else if (state == POSV_STATE_WARMUP)
+            result2.push_back(Pair("voting status", "open for testing"));
+        else if (state == POSV_STATE_INPROGRESS)
+            result2.push_back(Pair("voting status", "in progress"));
+        else if (state == POSV_STATE_CLOSED)
+            result2.push_back(Pair("voting status", "closed"));
+
+        if (!fVerbose && state != POSV_STATE_INPROGRESS)
+            continue;
+
+        if (state == POSV_STATE_INPROGRESS || (state == POSV_STATE_WARMUP || fVerbose))
         {
-            result2.push_back(Pair("status", "voting not yet started"));
+            result2.push_back(Pair("voting method", "coins in vanitygen address, when voting ends"));
+
+            string s = "?????";
+            if (svblockhashtovanity(posv_nMaturityBlockStart[i]))
+                s = "vanitygen -X95 f" + strPosvTest;
+            result2.push_back(Pair("vanitygen command", s));
+
+            result2.push_back(Pair("command for help", "svlistpairs " + to_string(i)));
         }
-        else if (nBestHeight < posv_nMaturityBlockEnd[i])
-        {
-            CBlockIndex* pblockindex = FindBlockByHeight(nBestHeight);
-            if (pblockindex->GetBlockTime() < posv_nMaturityTime[i])
-                result2.push_back(Pair("status", "voting open for testing"));
-            else
-                result2.push_back(Pair("status", "voting in progress"));
 
-            state = 1;
+        result2.push_back(Pair("voting start (fixed block height)", posv_nMaturityBlockStart[i]));
+        if (state < POSV_STATE_CLOSED)
+        {
+            result2.push_back(Pair("voting end (minimum block height)", posv_nMaturityBlockEnd[i]));
+            result2.push_back(Pair("voting end (minimum date)", "maturity date + 30 days"));
         }
         else
-        {
-            result2.push_back(Pair("status", "voting closed"));
-            state = 2;
-        }
-        if (!fVerbose && state != 1) continue;
-
-        if (state == 1)
-            result2.push_back(Pair("basics", "vote by sending coins to an address generated with vanitygen"));
-
-//        string s = "vanitygen -X95 f" + posv_strMaturityVanity[i];
-        string s = "?????";
-        if (svblockhashtovanity(posv_nMaturityBlockStart[i]))
-            s = "vanitygen -X95 f" + strPosvTest;
-
-        result2.push_back(Pair("vanitygen command", s));
-        result2.push_back(Pair("voting start (block height)", posv_nMaturityBlockStart[i]));
-        result2.push_back(Pair("voting end (block height)", posv_nMaturityBlockEnd[i]));
+            result2.push_back(Pair("voting end (final block height)", posv_nMaturityBlockEndEx(i)));
     }
 
     return result2;
@@ -819,15 +899,15 @@ Value svlistpairs(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "svlistpairs <voting number> [verbose=0]\n"
+            "svlistpairs <voting index> [verbose=1]\n"
             "Lists all pairs available for the given\n"
             "proof of stake voting. (pairs are usually\n"
-            "currency pairs like 'LTCBTC', but can be anything)\n"
-            "Use verbose=1 for voting instructions per pair.\n"
-            "Use 'svlistvotings' for a list of available\n"
-            "votings/maturity dates.");
+            "currency pairs like 'LTCBTC')\n"
+            "If verbose=1, returns voting instructions per pair.\n"
+            "(Use 'svlistvotings' for a list of available\n"
+            "votings/maturity dates.)");
 
-    bool fVerbose = false;
+    bool fVerbose = true;
     if (params.size() > 1)
         fVerbose = (params[1].get_int() != 0);
 
@@ -836,26 +916,26 @@ Value svlistpairs(const Array& params, bool fHelp)
         throw runtime_error("Maturity date index out of range.");
 
     Object result2;
+    result2.push_back(Pair("list of available pairs for maturity date", posv_strMaturityDesc[nVoting]));
 
-//    result2.push_back(Pair("list of available pairs, total count", int(POSV_PAIR_MAX)));
-    result2.push_back(Pair("list of available pairs, maturity date", posv_strMaturityDesc[nVoting]));
-    if (fVerbose)
-        result2.push_back(Pair("basics", "least significant digits of amount sent are used for voting"));
-
+    // how many pairs are listed, not just array size
+    unsigned int nPairs = 0;
     for (unsigned int i = 0; i < POSV_PAIR_MAX; i++)
+    {
+        if (!posv_nPairName[nVoting][i])
+            break;
+
+        nPairs++;
+    }
+    if (fVerbose)
+        result2.push_back(Pair("voting method", to_string(nPairs) + " least significant digits of amount sent are used"));
+
+    for (unsigned int i = 0; i < nPairs; i++)
     {
         result2.push_back(Pair(" ", " "));
 
-        if (!posv_nPairName[nVoting][i])
-        {
-            break;
-//            result2.push_back(Pair("nothing listed at index", int(i)));
-//            continue;
-        }
-        else
-            result2.push_back(Pair("index", int(i)));
+        result2.push_back(Pair("index", int(i)));
 
-        //        result2.push_back(Pair("name", posv_strOraclePairs[i]));
         result2.push_back(Pair("name", posv_strDynPairName(i, nVoting)));
 
         if (fVerbose)
@@ -892,12 +972,11 @@ Value svcalc(const Array& params, bool fHelp)
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
             "svcalc <string of 6 uppercase letters>\n"
-            "to get listing code from pair name.\n"
+            "returns the listing code for a given pair name.\n"
             "svcalc 1 <voting start block height>\n"
-            "to get vanitygen string (for code testing only)");
+            "returns the vanitygen string for the voting.");
 
     Object result2;
-
     string s = params[0].get_str();
 
     if (params.size() == 1)
@@ -913,11 +992,8 @@ Value svcalc(const Array& params, bool fHelp)
             m *= 26;
         }
         result2.push_back(Pair(s, i));
-
-        return result2;
     }
-
-    if (s.length() == 1 && s[0] == '1')
+    else if (s.length() == 1 && s[0] == '1')
     {
         int nHeight = params[1].get_int();
         if (nHeight < 0 || nHeight > nBestHeight)
@@ -929,13 +1005,7 @@ Value svcalc(const Array& params, bool fHelp)
         if (posvSanCount)
             result2.push_back(Pair("sanity check failed", posvSanCount));
         result2.push_back(Pair("vanitygen string", strPosvTest));
-
-    return result2;
     }
-
-    // dump help
-    result2.push_back(Pair("svcalc <string of 6 uppercase letters", "to get listing code from pair name"));
-    result2.push_back(Pair("svcalc 1 <voting start block height>", "to get vanitygen string (for code testing only)"));
 
     return result2;
 }
