@@ -108,6 +108,7 @@ public:
     int nMisbehavior;
     uint64 nSendBytes;
     uint64 nRecvBytes;
+    uint64 nBlocksRequested;
     bool fSyncNode;
 };
 
@@ -177,6 +178,7 @@ public:
     int64 nLastRecv;
     int64 nLastSendEmpty;
     int64 nTimeConnected;
+    uint64 nBlocksRequested;
     CAddress addr;
     std::string addrName;
     CService addrLocal;
@@ -235,6 +237,7 @@ public:
         nRecvBytes = 0;
         nLastSendEmpty = GetTime();
         nTimeConnected = GetTime();
+        nBlocksRequested = 0;
         addr = addrIn;
         addrName = addrNameIn == "" ? addr.ToStringIPPort() : addrNameIn;
         nVersion = 0;
@@ -257,7 +260,7 @@ public:
         nMisbehavior = 0;
         fRelayTxes = false;
         setInventoryKnown.max_size(SendBufferSize() / 1000);
-        pfilter = NULL;
+        pfilter = new CBloomFilter();
 
         // Be shy and don't send version until we hear
         if (hSocket != INVALID_SOCKET && !fInbound)
