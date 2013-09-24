@@ -366,18 +366,34 @@ static int posv_nMaturityBlockEndEx(int i)
     if (i < 0 || i >= POSV_MATURITY_MAX)
         return 0;
 
+    // voting closed 30 days after maturity date
     int nHeight = posv_nMaturityBlockEnd[i];
+    int64 t = posv_nMaturityTime[i] + (30 * 24 * 3600);
 
-    // voting is never closed until 30 days after maturity date
     if (nBestHeight > nHeight)
     {
-        int64 t = posv_nMaturityTime[i] + (30 * 24 * 3600);
         CBlockIndex* pblockindex = FindBlockByHeight(nHeight);
 
+        // if more blocks than estimated have been produced
         while (pblockindex->GetBlockTime() < t && nHeight < nBestHeight)
         {
             nHeight++;
             pblockindex = pblockindex->pnext;
+        }
+    }
+    else if (GetTime() > t)
+    {
+        CBlockIndex* pblockindex = FindBlockByHeight(nBestHeight);
+        if (pblockindex->GetBlockTime() > t)
+        {
+            nHeight = nBestHeight;
+
+            // if less blocks than estimated have been produced
+            while (pblockindex->GetBlockTime() > t && nHeight > 0)
+            {
+                nHeight--;
+                pblockindex = pblockindex->pprev;
+            }
         }
     }
 
@@ -886,8 +902,8 @@ Value svlistvotings(const Array& params, bool fHelp)
         result2.push_back(Pair("voting start (fixed block height)", posv_nMaturityBlockStart[i]));
         if (state < POSV_STATE_CLOSED)
         {
-            result2.push_back(Pair("voting end (minimum block height)", posv_nMaturityBlockEnd[i]));
-            result2.push_back(Pair("voting end (minimum date)", "maturity date + 30 days"));
+            result2.push_back(Pair("voting end (est. block height)", posv_nMaturityBlockEnd[i]));
+            result2.push_back(Pair("voting end (date)", "maturity date + 30 days"));
         }
         else
             result2.push_back(Pair("voting end (final block height)", posv_nMaturityBlockEndEx(i)));
