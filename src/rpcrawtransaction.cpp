@@ -207,14 +207,29 @@ int64 posv_nPairName[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{20613063, 20615077, 0
                                                           {20613063, 20615077, 139414004, 0},
                                                           {20613063, 20615077, 139414004, 0}};
 
-// the following 3 arrays are only used in posv_strDescOracleResult
+// the following 5 arrays are only used in posv_strDescOracleResult
 int posv_nPairScale[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{5, 2, 0, 0},
                                                          {5, 2, 4, 0},
                                                          {5, 2, 4, 0}};
 int posv_nPairMidpoint[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{11, 15,  0, 0},
                                                             {11, 16,  38, 0},
                                                             {11, 16,  38, 0}};
-const double posv_Strikes[7][64] =
+bool posv_fPairIsAlt[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{0, 0, 0, 0},
+                                                          {0, 0, 0, 0},
+                                                          {0, 0, 0, 0}};
+#define POSV_SCALE_MAX 7 // up to 10 scales
+// alternative scales
+const double posv_AltScales[POSV_SCALE_MAX][10] =
+{{ 0, 0, 0, 1, 2, 3, 4, 5, 6, 7 },
+ { 0, 0, 0, 1, 2, 4, 8, 16, 32, 64},
+ { 0, 0, 0, 1, 3, 10, 30, 100, 300, 1000},
+ { 0, 0, 0, 1, 10, 100, 1000, 10000, 100000, 1000000},
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // reserved
+ { 0, 0, 0, 4, 5, 6, 7, 8, 9, 10 },
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } // reserved
+};
+// logarithmic scales (for currency pairs)
+const double posv_Strikes[POSV_SCALE_MAX][64] =
 {{0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,   100000000, 10000000, 1000000, 100000, 10000, 1000, 100, 10,
   1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001,  0, 0, 0, 0, 0, 0, 0, 0,    0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0 },
 
@@ -228,9 +243,9 @@ const double posv_Strikes[7][64] =
  {0, 0, 100000, 75000, 50000, 30000, 20000, 15000,    10000, 7500, 5000, 3000, 2000, 1500, 1000, 750,    500, 300, 200, 150, 100, 75, 50, 30,    20, 15, 10, 7.5, 5, 3, 2, 1.5,
   1, 0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.05,    0.03, 0.02, 0.015, 0.01, 0.0075, 0.005, 0.003, 0.002,     0.0015, 0.001, 0.00075, 0.0005, 0.0003, 0.0002, 0.00015, 0.0001,   0.000075, 0.00005, 0.00003, 0.00002, 0, 0, 0, 0 },
 
-// 8 strikes per order of magnitude, /max strike diff 2/3 (e.g. 50/75, 100/150)
- {0, 0, 0, 0, 0, 0, 2000, 1500,   1000, 750, 500, 400, 300, 250, 200, 150,    100, 75, 50, 40, 30, 25, 20, 15,    10, 7.5, 5, 4, 3, 2.5, 2, 1.5,
-  1, 0.75, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15,   0.1, 0.075, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015,   0.01, 0.0075, 0.005, 0.004, 0.003, 0.0025, 0.002, 0.0015,   0.001, 0.00075, 0, 0, 0, 0, 0, 0 },
+// 8 strikes per order of magnitude, max strike diff 2/3 (e.g. 50/75, 100/150)
+ {10000, 7500, 5000, 4000, 3000, 2500, 2000, 1500,   1000, 750, 500, 400, 300, 250, 200, 150,    100, 75, 50, 40, 30, 25, 20, 15,    10, 7.5, 5, 4, 3, 2.5, 2, 1.5,
+  1, 0.75, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15,   0.1, 0.075, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015,   0.01, 0.0075, 0.005, 0.004, 0.003, 0.0025, 0.002, 0.0015,   0.001, 0.00075, 0.0005, 0.0004, 0.0003, 0.00025, 0.0002, 0.00015 },
 
 // 10 strikes per order of magnitude, max strike diff 3/4 (e.g. 750/1000, 300/400, 150/200)
  {1500, 1250, 1000, 750, 600, 500, 400, 300,    250, 200, 150, 125, 100, 75, 60, 50,    40, 30, 25, 20, 15, 12.5, 10, 7.5,    6, 5, 4, 3, 2.5, 2, 1.5, 1.25,
@@ -327,11 +342,39 @@ static string posv_strDescOracleResult(int ivoting, int i, int i2, bool show_res
     }
 
     bool show_both = (show_result&&show_implied ? true : false);
+    int y = posv_nPairScale [ivoting] [i];
+    if (y < 0 || y >= POSV_SCALE_MAX)
+        return sd;
 
-    int y = posv_nPairScale[ivoting][i];
-    int x = posv_nPairMidpoint[ivoting][i];
-    // fixme: is 3 ok?, use constant
-    if (y < 0 || y >= 7 || x < 4 || x >= 63-4)
+    // alternative scales
+    if (posv_fPairIsAlt [ivoting] [i])
+    {
+        double d = posv_AltScales [y] [i2];
+        double dnext = (i2 < 9) ? posv_AltScales [y] [i2 + 1] : 0.0;
+
+        if (show_result)
+        {
+            if ((i2 == 9) || ((i2 < 9) && (dnext - d > 1.5)))
+                sd = ">=" + to_string(d);
+            else
+                sd = "==" + to_string(d);
+        }
+        if (show_implied)
+        {
+            if (show_both)
+                sd = sd + ", ";
+            else
+                sd = "";
+
+            if ((i2 < 9) && (dnext - d > 1.5))
+                sd = sd + "<" + to_string(dnext);
+        }
+
+        return sd;
+    }
+
+    int x = posv_nPairMidpoint [ivoting] [i];
+    if (x < 4 || x >= 63-4)                    // fixme: is 3 ok?, use constant
         return sd;
 
     if (show_result)
