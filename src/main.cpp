@@ -2865,7 +2865,7 @@ bool InitBlockIndex() {
 //            block.nNonce   = 385270584;
 //        }
         // Genesis block
-        const char* pszTimestamp = "\"nytimes.com 10/1/2011 - Police Arrest Over 700 Protesters on Brooklyn Bridge\"";
+        const char* pszTimestamp = "\"If a technological feat is possible, man will do it. Almost as if it's wired into the core of our being\"";
         CTransaction txNew;
         txNew.vin.resize(1);
         txNew.vout.resize(1);
@@ -2879,9 +2879,9 @@ bool InitBlockIndex() {
         block.hashPrevBlock = 0;
         block.hashMerkleRoot = block.BuildMerkleTree();
         block.nVersion = 1;
-        block.nTime    = 1317529878;
+        block.nTime    = 1315469777;
         block.nBits    = 0x1e0ffff0;
-        block.nNonce   = 385610221;
+        block.nNonce   = 613795;
 
         //// debug print
         uint256 hash = block.GetHash();
@@ -2890,7 +2890,7 @@ bool InitBlockIndex() {
         printf("%s\n", block.hashMerkleRoot.ToString().c_str());
 // FBX
 //        assert(block.hashMerkleRoot == uint256("0x97ddfbbae6be97fd6cdf3e7ca13232a3afff2353e29badfab7f73011edd4ced9"));
-        assert(block.hashMerkleRoot == uint256("0x40a627262ed716f0f3d5104315fe0b600bf8e32a021929299163f74151fa52b1"));
+        assert(block.hashMerkleRoot == uint256("0x4e77ffdc1baa20ffffab9d901f418f7496b2a710e462ac4047accdb8b3b774f9"));
 
         block.print();
         assert(hash == hashGenesisBlock);
