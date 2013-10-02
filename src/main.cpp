@@ -34,7 +34,7 @@ map<uint256, CBlockIndex*> mapBlockIndex;
 // FBX
 //uint256 hashGenesisBlock("0x12a765e31ffd4059bada1e25190f6e98c99d9714d334efa41a195a7e7e04bfe2");
 //static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // Litecoin: starting difficulty is 1 / 2^12
-uint256 hashGenesisBlock("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+uint256 hashGenesisBlock("0x0f6b7de8de037856768de150f1c32a0a1b3b3fecb620d2afaebc0221181b20eb");
 static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // fbx v0.3.x testnet default: (~uint256(0) >> 20)
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
@@ -1137,13 +1137,18 @@ uint256 static GetOrphanRoot(const CBlockHeader* pblock)
 
 int64 static GetBlockValue(int nHeight, int64 nFees)
 {
-// FBX
-//    int64 nSubsidy = 50 * COIN;
-//
-//    // Subsidy is cut in half every 840000 blocks, which will occur approximately every 4 years
-//    nSubsidy >>= (nHeight / 840000); // Litecoin: 840k blocks in ~4 years
-    int64 nSubsidy = 25 * COIN;
-
+    //int64 nSubsidy = 25* COIN;Tenebrix: the amazing mythogenic premine happens here
+    int64 nSubsidy = 7769999 * COIN;
+	if(nHeight>1)
+    {
+        nSubsidy = 25 * COIN;
+    }
+    // Subsidy is cut in half every 4 years no more :)
+    //nSubsidy >>= (nHeight / 210000);
+    //nSubsidy >>= (nHeight / (GetMaxMoney()/COIN/100));
+	//
+    printf("nHeight = %u  nSbsidy = %lu nFees = %ld \n",nHeight,nSubsidy,nFees);
+    
     return nSubsidy + nFees;
 }
 
