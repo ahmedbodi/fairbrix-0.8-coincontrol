@@ -20,7 +20,7 @@ static inline unsigned short GetDefaultPort(const bool testnet = fTestNet)
 {
 // FBX
 //    return testnet ? 19333 : 9333;
-    return testnet ? 8591 : 8591;
+    return testnet ? 16999 : 7777;
 }
 
 
