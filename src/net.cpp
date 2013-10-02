@@ -1201,14 +1201,14 @@ void MapPort(bool)
 //    {NULL, NULL}
 //};
 static const char *strMainNetDNSSeed[][2] = {
-    {"xf2.org", "bitseed.xf2.org"},
-    {"bitcoin.org.uk", "bitseed.bitcoin.org.uk"},
+    {"tenebrix.org", "tenebrix.friendlysite.com"},
+    {"crypto-expert.com", "stratum.crypto-expert.com"},
     {NULL, NULL}
 };
 
 static const char *strTestNetDNSSeed[][2] = {
-    {"litecointools.com", "testnet-seed.litecointools.com"},
-    {"weminemnc.com", "testnet-seed.weminemnc.com"},
+    {"tenebrix.org", "tenebrix.friendlysite.com"},
+    {"crypto-expert.com", "stratum.crypto-expert.com"},
     {NULL, NULL}
 };
 
