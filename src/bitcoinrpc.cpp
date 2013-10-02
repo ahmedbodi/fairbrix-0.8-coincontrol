@@ -45,7 +45,7 @@ static inline unsigned short GetDefaultRPCPort()
 {
 // FBX
 //    return GetBoolArg("-testnet", false) ? 19332 : 9332;
-    return GetBoolArg("-testnet", false) ? 8645 : 8645;
+    return GetBoolArg("-testnet", false) ? 8697 : 8697;
 }
 
 Object JSONRPCError(int code, const string& message)
