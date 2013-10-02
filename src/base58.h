@@ -277,7 +277,7 @@ public:
 //        SCRIPT_ADDRESS = 5,
 //        PUBKEY_ADDRESS_TEST = 111,
 //        SCRIPT_ADDRESS_TEST = 196,
-        PUBKEY_ADDRESS = 95,
+        PUBKEY_ADDRESS = 127,
         SCRIPT_ADDRESS = 5,
         PUBKEY_ADDRESS_TEST = 111,
         SCRIPT_ADDRESS_TEST = 196,
