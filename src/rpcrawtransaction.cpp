@@ -181,14 +181,14 @@ std::string strPosvTest;// vanity test string, now generated from hash of starti
 bool posv_fOracle;      // poll the oracle
 
 int posv_nMaturity;
-#define POSV_MATURITY_MAX 3
+#define POSV_MATURITY_MAX 4
 // don't give exact time because daily OHLC data should be "good enough"
-std::string posv_strMaturityDesc[POSV_MATURITY_MAX] = {"close of Aug 31, 2013", "close of Sep 30, 2013", "close of Oct 31, 2013"};
-int64 posv_nMaturityTime[POSV_MATURITY_MAX] = {1377979200, 1380571200, 1383253200};
+std::string posv_strMaturityDesc[POSV_MATURITY_MAX] = {"close of Aug 31, 2013", "close of Sep 30, 2013", "close of Oct 31, 2013", "close of Dec 31, 2013"};
+int64 posv_nMaturityTime[POSV_MATURITY_MAX] = {1377979200, 1380571200, 1383253200, 1388523600};
 // start block should be several weeks before maturity date even if it costs performance
-int64 posv_nMaturityBlockStart[POSV_MATURITY_MAX] = {168000, 173110, 178000};
-// TODO: use block time for voting end
-int64 posv_nMaturityBlockEnd[POSV_MATURITY_MAX] = {180000, 188000, 196000};
+int64 posv_nMaturityBlockStart[POSV_MATURITY_MAX] = {168000, 173110, 178000, 181000};
+// this is a raw estimate, block time stamp is used for actual voting end
+int64 posv_nMaturityBlockEnd[POSV_MATURITY_MAX] = {180000, 188000, 196000, 200000};
 
 int posv_nPair;
 #define POSV_PAIR_MAX 4
@@ -205,16 +205,20 @@ int posvCritCount = 0; // other critical error
 // ('svcalc LTCBTC' etc to get the numbers)
 int64 posv_nPairName[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{20613063, 20615077, 0, 0},
                                                           {20613063, 20615077, 139414004, 0},
+                                                          {20613063, 20615077, 139414004, 0},
                                                           {20613063, 20615077, 139414004, 0}};
 
 // the following 5 arrays are only used in posv_strDescOracleResult
 int posv_nPairScale[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{5, 2, 0, 0},
                                                          {5, 2, 4, 0},
-                                                         {5, 2, 4, 0}};
+                                                         {5, 2, 4, 0},
+                                                         {5, 3, 4, 0}};
 int posv_nPairMidpoint[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{11, 15,  0, 0},
-                                                            {11, 16,  38, 0},
-                                                            {11, 16,  38, 0}};
+                                                            {11, 16, 46, 0},
+                                                            {11, 16, 46, 0},
+                                                            {11,  8, 46, 0}};
 bool posv_fPairIsAlt[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{0, 0, 0, 0},
+                                                          {0, 0, 0, 0},
                                                           {0, 0, 0, 0},
                                                           {0, 0, 0, 0}};
 #define POSV_SCALE_MAX 7 // up to 10 scales
