@@ -2146,6 +2146,112 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
 }
 
 
+// FBX proof of stake voting test
+int64 posxValueDiffIn;    // aggregate money inflow for all addresses matching the test string
+int64 posxValueDiffOut;   // aggregate money outflow for all addresses matching the test string
+int64 posxTxValue;      // output of one tx
+int posxErrCount;
+int posxCritCount;
+int posxSig;            // inflow or outflow
+static bool posxTestScriptPubKey(const CScript& scriptPubKey)
+{
+    txnouttype type;
+    vector<CTxDestination> addresses;
+    int nRequired;
+
+    if (!ExtractDestinations(scriptPubKey, type, addresses, nRequired))
+    {
+        posxCritCount++;
+        return false;
+    }
+
+    bool fmatch = false;
+    int n = 0;
+    BOOST_FOREACH(const CTxDestination& addr, addresses)
+    {
+        string s = CBitcoinAddress(addr).ToString();
+
+        if ((s[1] == 'X') &&
+            ((s[2] == 'A') || (s[2] == 'a') || (s[2] == 'B') || (s[2] == 'b')) &&  // bid+ask, and 2 trading rounds at the same time
+            ((s[3] >= '1') && (s[3] <= 'A')) &&                                    // 10 currency pairs
+            ((s[4] >= '1') && (s[4] <= '7')))                                      // (8 possible answers of the oracle) - 1
+            fmatch = true;
+        else
+            fmatch = false;
+
+        n++;
+
+        if (fmatch)
+        {
+            if (posxSig > 0)
+                posxValueDiffIn += posxTxValue;
+            else
+                posxValueDiffOut += posxTxValue;
+        }
+    }
+    // notice outputs with many addresses
+    if (n > 1)
+    {
+        if (fmatch) posxErrCount++;
+        return false;
+    }
+    return true;
+}
+
+static bool posxTestBlock(CBlock block)
+{
+    CMerkleTx txGen(block.vtx[0]);
+    txGen.SetMerkleBranch(&block);
+
+    BOOST_FOREACH(const CTransaction&tx, block.vtx)
+    {
+        // code from TxToJSON
+        BOOST_FOREACH(const CTxIn& txin, tx.vin)
+        {
+            if (tx.IsCoinBase())
+                // always do this (error 'No information available about transaction' if not)
+                HexStr(txin.scriptSig.begin(), txin.scriptSig.end());
+            else
+            {
+                int64 vout2 = (boost::int64_t)txin.prevout.n;
+
+                // backtrace transactions if not mined (need to know where the coins coming from)
+                CTransaction tx2;
+                uint256 hashBlock2 = 0;
+                // error 'No information available about transaction'
+                if (!GetTransaction(txin.prevout.hash, tx2, hashBlock2, true))
+                    return false;
+
+                // check outputs of each 'previous' transaction (to count coins sent *from* special addresses)
+                posxTxValue = 0;
+                posxSig = -1;
+                for (unsigned int i = 0; i < tx2.vout.size(); i++)
+                {
+                    const CTxOut& txout4 = tx2.vout[i];
+                    posxTxValue = txout4.nValue;
+
+                    if (i != vout2) continue;
+
+                    posxTestScriptPubKey(txout4.scriptPubKey);
+                }
+                // end processing 'previous' tx
+
+            }
+        }
+
+        // check outputs of each transaction (to count coins sent *to* special addresses)
+        posxTxValue = 0;
+        posxSig = 1;
+        for (unsigned int i = 0; i < tx.vout.size(); i++)
+        {
+            const CTxOut& txout = tx.vout[i];
+            posxTxValue = txout.nValue;
+            posxTestScriptPubKey(txout.scriptPubKey);
+        }
+    }
+    return true;
+}
+
 bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerkleRoot) const
 {
     // These are checks that are independent of context
@@ -2372,6 +2478,21 @@ bool ProcessBlock(CValidationState &state, CNode* pfrom, CBlock* pblock, CDiskBl
             pfrom->PushGetBlocks(pindexBest, GetOrphanRoot(pblock2));
         }
         return true;
+    }
+
+// FBX proof of stake voting test
+    if (nBestHeight>180000 && GetBoolArg("-xmode", false) && GetBoolArg("-txindex", false))
+    {
+        posxValueDiffIn = posxValueDiffOut = 0;
+        posxErrCount = posxCritCount = 0;
+        CBlock block2 = * pblock; // use copy of the block as to not break something
+        if (!posxTestBlock(block2) || posxCritCount || posxErrCount)
+            printf("ProcessBlock() : xmode : error, block is invalid or txindex==0, hash %s\n", block2.GetHash().ToString().c_str());
+        else if (posxValueDiffIn || posxValueDiffOut)
+            printf("ProcessBlock() : xmode : potential access of orderbook addr, coins in %d, out %d, hash %s\n",
+               (int)(posxValueDiffIn/COIN), (int)(posxValueDiffOut/COIN), block2.GetHash().ToString().c_str());
+        else
+            printf("ProcessBlock() : xmode : test passed, hash %s\n", block2.GetHash().ToString().c_str());
     }
 
     // Store to disk
