@@ -2147,12 +2147,223 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
 
 
 // FBX proof of stake voting test
+std::string strPosxExactMatch;
 int64 posxValueDiffIn;    // aggregate money inflow for all addresses matching the test string
 int64 posxValueDiffOut;   // aggregate money outflow for all addresses matching the test string
 int64 posxTxValue;      // output of one tx
 int posxErrCount;
 int posxCritCount;
+int posxSanCount;
 int posxSig;            // inflow or outflow
+static const int posx_ReverseBase58[128+1] = { 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0,
+                                            1, 2, 3, 4, 5, 6, 7, 8,
+                                            9, 0, 0, 0, 0, 0, 0, 0,          // 57..64
+                                            10, 11, 12, 13, 14, 15, 16, 17,  // 65..72, 'A'..'H'
+                                            0, 18, 19, 20, 21, 22, 0, 23,    // 73..80, 'I'..'P' ('I' and 'O' skipped)
+                                            24, 25, 26, 27, 28, 29, 30, 31,  // 81..88, 'Q'..'X'
+                                            32, 33, 0, 0, 0, 0, 0, 0,        // 89..96
+                                            34, 35, 36, 37, 38, 39, 40, 41,  // 97..104, 'a'..'h'
+                                            42, 43, 44, 45, 0, 46, 47, 48,   // 105..112, 'i'..'p' ('l' skipped)
+                                            49, 50, 51, 52, 53, 54, 55, 56,
+                                            57, 58, 0, 0, 0, 0, 0, 0 };
+#define POSX_ROUND_MAX 2    // allow 2 trading rounds at the same time for rollover
+#define POSX_PAIR_MAX 6     // can be extended to about 12 without much code change
+#define POSX_ANSWER_MAX 7   // 8 possible answers of the oracle -- 7 choices to bet on
+#define POSX_ASK_MAX 2      // bid + ask
+#define POSX_PROB_MAX 19    // 5% minimum price tick, can be extended to 49 (2% minimum price tick) without much code change
+std::string strPosxAddresses[POSX_ROUND_MAX][POSX_PAIR_MAX][POSX_ANSWER_MAX][POSX_ASK_MAX][POSX_PROB_MAX] = {
+    {
+// even trading round, pair 1
+{{{"fXB111a99YrhZCn9yi2jM8Rv6dyQXfh297", "fXB112nHRwbtpEH38z3JfvqjSQ767U4Ev6", "fXB113AmpAwimBZkvfpQ4zgRBTPfcN8QvE", "fXB114TvBJhai8oiBjb8txZ7oJU7Mch4dv", "fXB115DU5fD39nXSmSztg3GxeeGVTxknPe", "fXB116UNKk9GtVam2bymm4k7yw8vVHumXf", "fXB117MMTYvZyRX3pmm3xhRFjpPBbZyWpy", "fXB1187vMoyQrngR6P2s6skLf4a29wsSYp", "fXB119zus6hqSeGfyhhtS8YxgsSRT5f1uS", "fXB11ALky91FeKYaoGFbjoLq7ecd6eYbU3", "fXB11BgrEwTs8iEMoheYQALgkSgUjyyaDG", "fXB11CqoUgbH6r3RiFvGLouNtLj5oKsFeJ", "fXB11DKEYkifpMApSCBVkZiAj3VqrKcFum", "fXB11EJSMBEpvSvjLBkK8CRo7GHpZ73WXN", "fXB11Fdb8RAeCveF9G9ebyyhBrW8g3S8FD", "fXB11G9d6oDBw3dzHPCQ6tgz42zEy1qBJe", "fXB11HUJZpb9DzJzc9SCPoP8NmQJVUaxrd", "fXB11JFLYo9uukHu2FrE68Ds7PbWvoTk4r", "fXB11KSeoVARKAzM9GGBasyRyvrsSP17cD"},
+  {"fXA111tNcnnCpBzEyLRrfRTE4KCJHKx4pa", "fXA112TUpCDUXTU8XJtj2tzJ4imyYdXT6s", "fXA113yJAJqfX4DNBZbwRAeYqDbKLrJ8Gq", "fXA114Nm7usp6hRcfCq1S6zM3tyk2s7bSU", "fXA1158kbrJpSYjJniKjapi8nXW7omeYws", "fXA116bVPs2dxi6DvfmBAu3yvMdZ1p72yh", "fXA117SYdTrhB68Jh1mnaK99FNFjWz8wHm", "fXA118KBcWAgTeKpMzYHG4DFbdMh9kUAzm", "fXA119bvkGNyevJ5HNNyrqnRDsDkc9kuKQ", "fXA11AK8L8zeDER6Vh917btTqirQCqQR5Q", "fXA11BLcLv9EmHDYMRGn87P5mu1PxPyw8i", "fXA11Cxtc51Xd3JSV1wNmW5YtU3wK112Ke", "fXA11Dn63ARCEquMep3fCpALHx1eqYrAsz", "fXA11E2MSxZQavNnktMksjYuR7LriEzK5V", "fXA11FumJskaEZCvJ5QfHqKot71f52meub", "fXA11GPidcqu7nTCs77TZcsvF36mGr4x2d", "fXA11HoEoPAgQqcTrP9vj2fe4LN5aQkuAa", "fXA11JY8fKFhYDk4EKcT5QHaAfWMoZG6Mx", "fXA11KdtRfkz5r3wXHT1HUxXow1n9Tsa6T"}},
+ {{"fXB121s7Tbb2e4Lj4PrBBnW6ZxWkZ279fn", "fXB122fyVSTvqmyn9FMrykMYdWsatUKeRZ", "fXB123oVAa1oPUtwkMMRP7eG9yiUjykAHN", "fXB124mbUWVns5MuxSz2FaLtD6m1p3iHp9", "fXB125swbSSMU9vN18kz1M2GrPpYbAxqmW", "fXB1263en2B1CoipLWsASNyxts4rR2Xq4t", "fXB127n1jKWStAUuGZ8Kh7hCb5GvT3bUxc", "fXB1281q3reusXWppUTACmh6ocKgeJMydU", "fXB129qcYdT6Azb3JPcoPsjnGYcJRESpKt", "fXB12A6HNzPymxMctW9LoLZZDFm6fiUnXN", "fXB12BMsRsduV81nyFRMsZnsnAf3nUSGWz", "fXB12CJXqwwo6pLVTeDM8po88LPHxCfqQo", "fXB12DmcBGRn4ydBdu8EaHd1vqCuxMDs3e", "fXB12EnoZNiEPfv8nsobrUe7Z9YBezXbMc", "fXB12FtxVX9R1HBxJf2P5BhGws7yweypYj", "fXB12GR7Kstt2iTv4oix3BBKJQGrbDbJPe", "fXB12HZscbiDJF2qyt5tJjF5qSxG55kLrV", "fXB12JQPftd5o2zteRA1Pq9aM3UJWmSC81", "fXB12KVsr5T9z6T6aMH2LEHwAyfN4mshNj"},
+  {"fXA121bxPwKDmFfvCv8tDgAQpjGAZPnqqA", "fXA122XhUPzqNmYq9pDzniWochKfr4n7K6", "fXA1232xh3Eb46ALqbP7WbsD2yq4gJBsKN", "fXA124k9KwkpeQqhaydybvX6A5Z5WH63nb", "fXA125w1Ta2wq3voFSvyff7ux2kYKiYyT3", "fXA126NEJXnfod5VfZERVTnMTxo7jXknh6", "fXA127kd95mnpSWwf3nYCmoaKWrMAW41Rw", "fXA128fRiyoX9Mkwag4rQXekak4L5wMGBt", "fXA129wVtE7BaC57qWUj1gfrh8F7hb85xW", "fXA12APXDPTGiByZQvYtQMfPe3Mk1fWNSM", "fXA12Bg95WkcLve8LxC57B5euKBYtKYt6M", "fXA12CBiPUMxQ9kvTkbntrkz3PheQiPgNU", "fXA12Dn1S8tkwj3DDE3a1uZJMU2TG4bXRP", "fXA12E4t33wi46mT6GUqToASbSFesjbRkM", "fXA12FQQekHvkFrBph529EgyeHYm4HPauF", "fXA12GEkd8LM9CgQFZohbt47rzEWgtL7HV", "fXA12HoGXWqwRUyTiUwXKfzE77apeQD5fF", "fXA12JYbnAXakyGU7tLcQAJseupLrdNCwz", "fXA12KLKN5xRLRXnTudaTpg2tGkM371nUJ"}},
+ {{"fXB131BfcgewKmbLVuU48Q83zQrgbAMX3S", "fXB132rT6hZE2d2jgwd5kYV8GXg4d2Jk9s", "fXB133tiRoyg1pi7XMtmpxxaSa7p6xYq7a", "fXB134yxP6yVKC8r2i71fjSaNfY87NFUm7", "fXB1351W4UjwDKChHrPqLqedASRaf1qWNC", "fXB13655QjekftEXx3v1yCWEQMV2PmDbCx", "fXB137TAgXmPmLJvenrHHQR5Wd6oq9KiMV", "fXB138HhmUhTSQ6hQupVvQwTzGdHu6Kt7e", "fXB139WyrgJbX3NDmbWxpbQmBBPKtPuUt6", "fXB13ABH16VTZAcMttNDH4VjsDNvYTyVCk", "fXB13BtvrSZmAZDgiusEASUAHorqrRf2cA", "fXB13CvBxxK24JEHNxXq7T3dqn98sHdigF", "fXB13DGA9JZbJ7vTAoJZQAcQAzZZ4mcWSj", "fXB13E2UofFW1beSeT2am2HAEWJxrhgJBs", "fXB13F1amjizyxFpSUxTDa6dnJo1qjyHKU", "fXB13Gb4gJDUmk2Mscf42ZgWMhqbDc3LnA", "fXB13HwGLFwT4CtV1Uh9buVJ7oevoNuLfS", "fXB13Jf6iv3RBeBUjKaHR2KUqJ2RYJQCJB", "fXB13K8En9bn7bQrUKYDHUqrxr1RjRm1fM"},
+  {"fXA131qp7WtGZTH3mtpLW14vT3ect7qxSV", "fXA132qS9qaBHBG43Utv5vHsFzY7FCTw1y", "fXA133AReTTKytmwtc3p4tivt49xvu61MM", "fXA134j2SK881oBQhTGjxuw2rCmfHzoP9g", "fXA1358XXsZnTFyUSX2tr2tBNAYpzmWTS9", "fXA136hvzJvZS1LmArXUE2VGjQkvys7xj8", "fXA137kcCWx5SwDzcnZBvkX7Kh1Sv7DRJH", "fXA138qpxWRQs9cDEjMejXD2MxP4fwZkGb", "fXA139w9AerpXzmD16XjHiWqPxJnWcKVKC", "fXA13A7qvq3EdXX2n4FsdxUkcvM2bA5hPT", "fXA13ByvcNJ3kkemnywt9DCaXghrECyL7Z", "fXA13CmyCBHAdSVR8QYCC7o89S4C7VymLC", "fXA13DuSHRu79YaoNQxG3cL5eiurnj6pFB", "fXA13EHENMNfSBhUFRBSvBEg8pxvMYEQ7G", "fXA13Fh32Wc8zq1fxpfga6Cdk56RaPzGqs", "fXA13Gnwb15xL7DAm9w2weH7Y6aV1Nn444", "fXA13HVeY1myAd7KMS2AW8gbZnPPsT9mhd", "fXA13Jrhxb59U5jhGdBitX6oPDoF6jwjvH", "fXA13KthzWYRi1E5fBYtpde5oVDUw6PGGz"}},
+ {{"fXB141wP7La1jcD2AeXphTzLxfKkQ1LGPs", "fXB142wTuUhcJ5UbW7oD6e4LtqvBjpSgLg", "fXB1438Z1hvwLemiobjDw49uoqjW2Z5fdv", "fXB144hN8vC9L93yqmTdFjU1bwpGtE4sHg", "fXB145H3JtBd1kYG2FFv2MySYC4bKmKBA7", "fXB146s12hQjT7qn1p6wXuCupP5x2SShhX", "fXB147EjNj8VkbHV3CRq7VCTk85Cy4MV3t", "fXB148rW4cPpwtyfdgrm9ubcddLgxYk9sk", "fXB149rEh6pLC35DrWq5x5vsSAowCmCikC", "fXB14AFvEmEt2KxzpjWrPs5WF5k2VKV18c", "fXB14BDWBcn86dy5sMcFNQUiiT7fezS8Q3", "fXB14CX59JN98fRkzzEHxJr8ytQsEshsL2", "fXB14Dopy6F7qaZc8pMgj6rgt79kZ21YZc", "fXB14EyibofSL8gGfEEmnkLg53Dt3FaZda", "fXB14FNRSq8xDshZGTYwx7cvbzwHDrD4vb", "fXB14GrU1GLUisZFwBdfHfFW65kTS3kbB9", "fXB14HoGTyRzPrra9HRnyzeX7DB8n33UrB", "fXB14Jm2dMzhMAXAfVXRSd8n4U7DZpGDb3", "fXB14K1zPCG2bm7VCPn3Sjb4M33EdsWc73"},
+  {"fXA141CV4Y7UgraNbNn8RbRZsF3p1aydwz", "fXA142Uh72u61SpuG6KYnC1FTDPNPi1fJV", "fXA143K7WsZ1y7i9kZ3337wtf6aP7dN4sC", "fXA1442yvQTFFe2EPkawb3fAhcDFHTxQ6u", "fXA145t9zpWfwHaojSiARY7Dvtsa6g7k9y", "fXA146AX9ThfcsGCZgPfHi7N7cbVHpxqRs", "fXA147o1NG3EyZvgTWiMFY4fACs51EPSgG", "fXA148pNp9DhQbbcCJdDwBGhbHXpYaCQYm", "fXA149dKLd5yLceAnt1cMYiSxAVxbXvYzX", "fXA14A6XSba6Lg8yKTKgjXodZSQgJsDpgr", "fXA14BtSpxpHMBwRtTQKyoo1bUu5Y553e1", "fXA14Cw9fke4NCvgM7Wn3MTyD9nxRf664b", "fXA14Dk7e5o3mQNbPovtzDqfqMvZt86wHi", "fXA14EdTmYXmUDJcz9qxKJvFUnSdSh6gHX", "fXA14FwvavyGoKLfhJTWNi4xynMWp6N2Sg", "fXA14Gh48QimKoMRSEzKQ6teWffj1VJbdV", "fXA14HhD7k8MheYbdR3Poek33CbRVQnrVP", "fXA14JpK3gHRWme6ae8VFroxCzJ2XteaUJ", "fXA14K71s85jQQb2JPvPCTb3iojeAVUPjY"}},
+ {{"fXB151J2QamKxPBQdzAspVoBB8BjwiEBQb", "fXB152ytQ5saxW53udDwrmPWeGguLzwXdA", "fXB153xbtWG5JqrwEqbcBLc25MWc4Ls3Ma", "fXB154G6kQhWDzoZuUdS5oEZgt4wTcF4MF", "fXB155AXe5vd8FqJkLZk6XTjBDibS5uBFN", "fXB156XLvoLWwsvK4WaArKwpxCz9cQy5tZ", "fXB157kkE8E2uFk1e7dUj9GkujUfy5LEsr", "fXB1584jwTB7S4eo5BX2kUXTpi5mHRGoov", "fXB159JancH4SkrxrraUHepVbjndWcC48Y", "fXB15ARrkTLTbjfLVLz8CAoguxSJo9QFT1", "fXB15BTyD9wj9vFUEsfHiPmJ3Hi7CwCBPM", "fXB15CR7ooG2nEiJkCtzpibAUpqvB3FNNH", "fXB15D7cQ1Xv9f9FHg7zzZ3eHea25kL5H4", "fXB15EhkRmPzBDDAHh7XEJy2TWxtQjqXfX", "fXB15FWT5Fhf7dS4cL3Vrd6pAHpySnyYaX", "fXB15GjdpWM6q35A8wkfe2JKSrqivzfPvv", "fXB15H1jq5yra2e4rjHuoNmeQ6M9rcjkfo", "fXB15Jm8u7rQhGZBkcCB88A1WvBeK67sfZ", "fXB15Kp5MoTntHAHfpUA8a8ttuWBn9KtFh"},
+  {"fXA151o2pMTeE2Hqhvp64B31LdhgXgBaJm", "fXA152KR39u36DjP3R9K6qLQfPiVkXWNKZ", "fXA153eed1iXRMsCrSWLfNFfb43AVu5HT8", "fXA154nW1eYpWyCtrJ1ecYL3y2nYwciwg3", "fXA155p9AWrqKt7hNTdyoKcw43S6td6fGs", "fXA1566Fe3tNsqk4ubSEzmuicqEA63L4Xz", "fXA157wjScucsBTfhxg9xqM4hci1rMwPrF", "fXA158pXD9Hh3z39cVvLgMa1tYaco2PjFk", "fXA159gkRG9eeSUz5hUktGK5dVU6f4ThDa", "fXA15ASdFESbKTS1uuVYy6MnceoPWvxF7k", "fXA15BYCpqrmLdcbwrBSEj2xdAGR5SfEvc", "fXA15CGugosaaymo2mncasYYJiJ7TJ8WfY", "fXA15D5mMXTUswSbECxuU6jADAu9s5wBdC", "fXA15EedjKPM91zjuNbfG3u2SQRZbUq1LV", "fXA15Fa1W3KrWgNeHWBZ3ZCKeLd4nMbLfW", "fXA15GWrSpe6mQ3Fmb49jbPkU89Jxi9SXx", "fXA15H3QMk76KrGzmJJMUrZJGrYf2txy6X", "fXA15JEcjfrGmac65SGYimGQXqsGX2d69g", "fXA15KYdwEFU6hBQa2aZMqguTk6o85inKM"}},
+ {{"fXB1614dqZaf8cCXKsVAioq85ZMT9ZToQo", "fXB162FFxeMcLXFbFVyskxpjMQiwMsEM1t", "fXB163SwvdHcn9Mh7PcmMWZtf13YD4kSMw", "fXB1647phfGGFn665kF5oK4PRZyhvqhssB", "fXB165ojeeku1NdA8P13ivmAREsFMPSKhY", "fXB166CZeL23t2erb12LgRnFvxh2kpW4x5", "fXB167hBeBrbGPXJdawedANZQKqjZpVDBq", "fXB168M1Y2MkwZndaSGeUuyqK3TKVph6Af", "fXB169a9gofLZhgysz9ThAGezBz4yMd5au", "fXB16A6SyAg6pxxEwstHBMMkcb6UQj4xor", "fXB16BGnHrUugp74CoKeR3iaBZvdgB5g6P", "fXB16C6QH8rdQyMpB6XKKnUQoCWmvnX8Eo", "fXB16DRkrzgweKjAjW3kV4oBUvaxYHAWA6", "fXB16Emj8tE1YWKwXXqtLVCxjAajBzBcXJ", "fXB16FGYdsap88fPNEgraTJaq2xHwzmkAF", "fXB16GzmdtG3FoHAuYftdsjb6eFA6b9Xim", "fXB16Hd5pgdCFhbEDNe91jPmH9XALEp9Xi", "fXB16JnSP9baUaYmV4rW1Cu7at9ZHTRJjF", "fXB16KB6u9vf1syLhWi68jckGF6CVMCQLB"},
+  {"fXA161y7buhnR6Dq1XxK1M52mUgXjwH6Si", "fXA1627AVzfZ3L7QF4fE7ktJKLkJ1QSTYu", "fXA163ngGo81xwjKmyZdSebieFnEHfWiEH", "fXA164zdA8t5WfWX8T637Q4ucdW1MSqSmJ", "fXA165CCiTpdQncESfM23FFkEwbDpSCGas", "fXA16689RU3yUjpHQeqfzc5FCA6edbDG7v", "fXA167YuwDp5kfbMDXD9AA8ws2QLZCsCxF", "fXA168gnsCAbNmuTkgv4Ye8SHgeV37wRUs", "fXA169z1YizXadv5tVSrXSzyBp4QZfGGZk", "fXA16AefLHcYKJm1797v2EkkZQ1eshXprs", "fXA16BiW5EfGwdQ59Hfn5Y1kV6o59bPZmp", "fXA16Ccr68CMEqT5jsRUjazQk35LgRu9aS", "fXA16DXbg3ksLXEjVAySsqSrZZfTR8sa7s", "fXA16EYxaejt3iqkuJmXTQSX4QCnoDH7A2", "fXA16FkD6ozoESvbqex7xi2aVDxfgK6SLZ", "fXA16Ge7hzxcd6RZXgRgmH5WVz47AaYhWz", "fXA16HLFZNGzdRZeN5LyJHHMSKmmhkoxHF", "fXA16JdcsTm6RUxwQtQa4o88knn2Haai9p", "fXA16KwujdrrMhkTWkNFdUFyzcrAc3wk8B"}},
+ {{"fXB171Ev496vHHo3UasMHfssxkZaDWv431", "fXB172qjGWJfRVTM8LhvdxmmcJdRw2SL8x", "fXB1733mnzCFyN8firtSL3GtBUrTJc8GSs", "fXB174c6WnoZvXZpRSfjEJFeSRrLSVxhtj", "fXB175dxN4BRKKd53GTMFoHyt9U23Bn46S", "fXB176bwQBwBhgfo9fsR2dMMTAk1B3e7r4", "fXB177GLBTN9TKqqeXktftpz5TcK2Y3ni2", "fXB178X9vzBvCJSXGZnTMYXK3H5gYBrZgt", "fXB17984N4aG1qyjLV17hJckVRZJRR17kV", "fXB17AXMAUTLRPNnUDGZ51BvxSmyTbGnJB", "fXB17BsD37qtgsfqURDUX82bZbJcAvQJFt", "fXB17CoMLNLCwFSLtpZmot2dmAs19SWQo2", "fXB17DmnAgfS6JW2JbYmW1SSKXQ7641xTm", "fXB17E3X7M4HjYmoYxKRoD3fvyYhN9MTsV", "fXB17Fx4XMgB4Rfzg4mGJJdHp2FKWM4xqJ", "fXB17GstDtwZxBCkU4uRF8gHbJNQYcU7UP", "fXB17HK2SYCSZEUqPSQyuegbQZjaFLupCi", "fXB17JfgwxkbJBnWH2yCMdFp3ZshBU9R5Q", "fXB17KkFQgMm2voLR1m2mK6FRNccq2Jzjd"},
+  {"fXA171kM99K5dEHzjWLGNqDaKmWKip1M7r", "fXA172MXm3iqgsSy9LuUCXVBa328oBicW4", "fXA173CLp2RoEJJy2Z1oYeHxEBpbeYQV96", "fXA174vf7i9brQpZXa2Y6bCgpe42ihNXQa", "fXA175CpQ4RZRYqWfiSR9Z3FZma1u7s1NJ", "fXA176BtWWLBCBH3L8Ckk56DUTRVgQiCVn", "fXA177b2pyuDDQBLVPVLNoyg3Y8EecHHsP", "fXA178mKgSwhnfh7WZGvEfNfXDqBNRHuLX", "fXA179tMVvytVhXQTSsksKXSjDHdSfeKHK", "fXA17AwWguY9E4Z3C9dg7DgA8nMAsC6rJ1", "fXA17BVsZdsqTShCN6hyXiEXbmxkF3UHjy", "fXA17CFtoYtNmcp7MeqHCoL3vneksLz3vt", "fXA17DSbMUWASszkSNHUL1C1NCUA6v7Ncw", "fXA17E856Qj7woqGn9QatUMs1VdQReBEPN", "fXA17FGTNbm82NmBPGxMHcB2qCwmAmjZkx", "fXA17GqEqDmBm4cdcsC2caRfkhoV53XMGt", "fXA17HZj5SphFXX8HN7Rekf749AtJRJgPK", "fXA17JMUUkWJ7Km8K1CFmytbbfKAwnn5Fi", "fXA17KgCgXf8rPtqCE3MDkKh9D4kxKq9YK"}}},
+// even trading round, pair 2
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}},
+// even trading round, pair 3
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}},
+// even trading round, pair 4
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}},
+// even trading round, pair 5
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}},
+// even trading round, pair 6
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}}
+    },
+    {
+// odd trading round, pair 1
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}},
+// odd trading round, pair 2
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}},
+// odd trading round, pair 3
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}},
+// odd trading round, pair 4
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}},
+// odd trading round, pair 5
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}},
+// odd trading round, pair 6
+{{{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}},
+ {{"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""},
+  {"", "", "", "", "", "", "" ,"", "", "", "", "", "", "", "", "", "", "", ""}}}
+    }
+};
+
 static bool posxTestScriptPubKey(const CScript& scriptPubKey)
 {
     txnouttype type;
@@ -2172,10 +2383,27 @@ static bool posxTestScriptPubKey(const CScript& scriptPubKey)
         string s = CBitcoinAddress(addr).ToString();
 
         if ((s[1] == 'X') &&
-            ((s[2] == 'A') || (s[2] == 'a') || (s[2] == 'B') || (s[2] == 'b')) &&  // bid+ask, and 2 trading rounds at the same time
-            ((s[3] >= '1') && (s[3] <= 'A')) &&                                    // 10 currency pairs
-            ((s[4] >= '1') && (s[4] <= '7')))                                      // (8 possible answers of the oracle) - 1
+            ((s[2] == 'A') || (s[2] == 'a') || (s[2] == 'B') || (s[2] == 'b')))  // bid+ask, and 2 trading rounds at the same time
+        {
             fmatch = true;
+            int iround = (s[2] == 'a' || s[2] == 'b') ? 1 : 0;
+            int iask = (s[2] == 'a' || s[2] == 'A') ? 1 : 0;
+
+            // (s[3]<0 || s[3]>=128) 'is always false due to limited range of data type [-Wtype-limits]'
+            int ipair = posx_ReverseBase58[(int)s[3]] - 1;
+            int ianswer = s[4] - '1';                           // always <10
+            int iprob = posx_ReverseBase58[(int)s[5]] - 1;
+// printf("ProcessBlock() : xmode : testing %s iround %d ipair %d ianswer %d iask %d iprob %d\n", s.c_str(), iround, ipair, ianswer, iask, iprob);
+            if (iround >= 0 && iround < POSX_ROUND_MAX &&
+                iask >= 0 && iask < POSX_ASK_MAX &&
+                ipair >= 0 && ipair < POSX_PAIR_MAX &&
+                ianswer >= 0 && ianswer < POSX_ANSWER_MAX &&
+                iprob >= 0 && iprob < POSX_PROB_MAX)
+            {
+                if (s.compare(strPosxAddresses[iround][ipair][ianswer][iask][iprob]) == 0)
+                    strPosxExactMatch = s;
+            }
+        }
         else
             fmatch = false;
 
@@ -2483,16 +2711,20 @@ bool ProcessBlock(CValidationState &state, CNode* pfrom, CBlock* pblock, CDiskBl
 // FBX proof of stake voting test
     if (nBestHeight>180000 && GetBoolArg("-xmode", false) && GetBoolArg("-txindex", false))
     {
+        strPosxExactMatch = "";
         posxValueDiffIn = posxValueDiffOut = 0;
-        posxErrCount = posxCritCount = 0;
+        posxErrCount = posxCritCount = posxSanCount = 0;
         CBlock block2 = * pblock; // use copy of the block as to not break something
-        if (!posxTestBlock(block2) || posxCritCount || posxErrCount)
-            printf("ProcessBlock() : xmode : error, block is invalid or txindex==0, hash %s\n", block2.GetHash().ToString().c_str());
+        if (!posxTestBlock(block2) || posxCritCount || posxErrCount || posxSanCount)
+            printf("ProcessBlock() : xmode : error, block is invalid, hash %s\n", block2.GetHash().ToString().c_str());
         else if (posxValueDiffIn || posxValueDiffOut)
-            printf("ProcessBlock() : xmode : potential access of orderbook addr, coins in %d, out %d, hash %s\n",
+            printf("ProcessBlock() : xmode : access of potential order book addr, coins in %d, out %d, hash %s\n",
                (int)(posxValueDiffIn/COIN), (int)(posxValueDiffOut/COIN), block2.GetHash().ToString().c_str());
         else
             printf("ProcessBlock() : xmode : test passed, hash %s\n", block2.GetHash().ToString().c_str());
+
+        if (strPosxExactMatch.length() > 0)
+            printf("ProcessBlock() : xmode : exact match, addr %s\n", strPosxExactMatch.c_str());
     }
 
     // Store to disk
