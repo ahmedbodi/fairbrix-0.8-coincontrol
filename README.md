@@ -59,28 +59,28 @@ Windows
 To compile using Qt 5.1.1 see https://bitcointalk.org/index.php?topic=149479.0
 ("Building headless Bitcoin and Bitcoin-qt on Windows")
 
-To compile using Qt 4.8.5:
+To compile using Qt 4.8.5
 
- - 1. Prepare your build system. I suggest setting up a clean virtual machine (Windows7 SP1 64bit)
-   via Virtualbox or similar.
+1. Prepare your build system. I suggest setting up a clean virtual machine (Windows7 SP1 64bit)
+via Virtualbox or similar.
 
- - 1.1 Install MinGW: https://sourceforge.net/downloads/mingw
-   Make sure to select prepackaged repository catalogues (use gcc 4.6.2 as 4.7.2 won't work).
-   A minimal setup will require "C Compiler", "C++ Compiler" and "MSYS Basic System" to be installed.
+1.1 Install MinGW: https://sourceforge.net/downloads/mingw
+Make sure to select prepackaged repository catalogues (use gcc 4.6.2 as 4.7.2 won't work).
+A minimal setup will require "C Compiler", "C++ Compiler" and "MSYS Basic System" to be installed.
 
- - 1.2.a Install ActivePerl Community Edition: http://www.activestate.com/activeperl/downloads
-   Tested with ActivePerl-5.16.3.1603-MSWin32-x64, but newest x86 should work just fine.
+1.2.a Install ActivePerl Community Edition: http://www.activestate.com/activeperl/downloads
+Tested with ActivePerl-5.16.3.1603-MSWin32-x64, but newest x86 should work just fine.
 
- - 1.2.b From a MinGw shell (MSYS) run the following
+1.2.b From a MinGw shell (MSYS) run the following:
 
     mingw-get install msys-perl
 
- - 1.3. Add MinGW bin folder to your PATH environment variable (C:\MinGW\bin if you used installer defaults).
+1.3 Add MinGW bin folder to your PATH environment variable (C:\MinGW\bin if you used installer defaults).
 
- - 2. Download, unpack and build required dependencies. (save them in c:\deps folder)
+2. Download, unpack and build required dependencies. (save them in c:\deps folder)
 
- - 2.1 OpenSSL: http://www.openssl.org/source/openssl-1.0.1e.tar.gz
-   From a MinGw shell (MSYS), unpack the source archive with tar (this will avoid symlink issues) then configure and make:
+2.1 OpenSSL: http://www.openssl.org/source/openssl-1.0.1e.tar.gz
+From a MinGw shell (MSYS), unpack the source archive with tar (this will avoid symlink issues) then configure and make:
 
     cd /c/deps/
     tar xvfz openssl-1.0.1e.tar.gz
@@ -88,46 +88,45 @@ To compile using Qt 4.8.5:
     ./config
     make
 
- - 2.2 Berkeley DB: http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz
-   From a MinGW shell:
+2.2 Berkeley DB: http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz
+From a MinGW shell:
 
     cd /c/deps/
     tar xvfz db-4.8.30.NC.tar.gz
     cd db-4.8.30.NC/build_unix
     ../dist/configure --disable-replication --enable-mingw --enable-cxx
 
-   Edit your build_unix/db.h by replacing line 113 `typedef pthread_t db_threadid_t;`
-   with `typedef u_int32_t db_threadid_t;` and:
+Edit your build_unix/db.h by replacing line 113 `typedef pthread_t db_threadid_t;`
+with `typedef u_int32_t db_threadid_t;` and:
 
     make
 
- - 2.3 Boost: http://sourceforge.net/projects/boost/files/boost/1.54.0/
-   Unzip boost inside your C:\deps folder, then bootstrap and compile from a Windows command prompt (as administrator):
+2.3 Boost: http://sourceforge.net/projects/boost/files/boost/1.54.0/
+Unzip boost inside your C:\deps folder, then bootstrap and compile from a Windows command prompt (as administrator):
 
     cd C:\deps\boost_1_54_0\
     bootstrap.bat mingw
     b2 --build-type=complete --with-chrono --with-filesystem --with-program_options --with-system --with-thread toolset=gcc stage
 
- - 3. Compile leveldb, then compile fairbrix.
+3. Compile leveldb, then compile fairbrix.
 
- - 3.1 Extract fairbrix (for example to C:\fairbrix) then start MinGW shell and change into leveldb folder:
+3.1 Extract fairbrix (for example to C:\fairbrix) then start MinGW shell and change into leveldb folder:
 
     cd /C/fairbrix/src/leveldb
     TARGET_OS=NATIVE_WINDOWS make libleveldb.a libmemenv.a
 
- - 3.2 From a Windows command prompt (as administrator) run:
+3.2 From a Windows command prompt (as administrator) run:
 
     cd C:\fairbrix\src
     mingw32-make -f makefile.mingw
     strip bitcoind.exe
 
- - 4. Setup Qt 4.8.5 and compile Fairbrix-qt
+4. Setup Qt 4.8.5 and compile Fairbrix-qt
 
- - 4.1 Install Qt 4.8.5 http://download.qt-project.org/official_releases/qt/4.8/4.8.5/qt-win-opensource-4.8.5-mingw.exe
-   Setup will probably complain about MinGw being an unsupported version, accept anyway.
+4.1 Install Qt 4.8.5 http://download.qt-project.org/official_releases/qt/4.8/4.8.5/qt-win-opensource-4.8.5-mingw.exe
+Setup will probably complain about MinGw being an unsupported version, accept anyway.
 
- - 4.2 From "Qt 4.8.5 command prompt" configure then make:
-   (an executable in the \release folder will be built)
+4.2 From "Qt 4.8.5 command prompt" configure then make:
 
     cd C:\fairbrix
     qmake "USE_UPNP=-" bitcoin-qt.pro
