@@ -4,7 +4,8 @@ Fairbrix is the second oldest scrypt based cryptocoin.
  - 25 coins per block (constant forever)
  - 2016 blocks (1 week) to retarget difficulty
 
-This version (Fairbrix 0.8.3.7beta) is based on Litecoin version 'exp-0.8.3.7-cc'.
+This version (Fairbrix v0.8.5.1beta) is based on Litecoin version 'exp-0.8.3.7-cc',
+Bitcoin v0.8.1 (for IRC node discovery) and Litecoin v0.8.5.1 (for security fixes).
 
 Litecoin is a lite version of Bitcoin using scrypt as a proof of work scheme.
  - 2.5 minute block targets
@@ -55,22 +56,92 @@ To compile the daemon with STATIC option:
 Windows
 --------
 
-see https://bitcointalk.org/index.php?topic=149479.0
+To compile using Qt 5.1.1 see https://bitcointalk.org/index.php?topic=149479.0
 ("Building headless Bitcoin and Bitcoin-qt on Windows")
 
- - "Qt 4.8.5 command prompt" means: run C:\Qt\4.8.5\bin\qtvars.bat from Windows command prompt (as administrator)
+To compile using Qt 4.8.5:
 
- - Steps 3.2 and 4.2 are already done.
+ - 1. Prepare your build system. I suggest setting up a clean virtual machine (Windows7 SP1 64bit)
+   via Virtualbox or similar.
 
- - An executable (in the \release folder) will be built.
+ - 1.1 Install MinGW: https://sourceforge.net/downloads/mingw
+   Make sure to select prepackaged repository catalogues (use gcc 4.6.2 as 4.7.2 won't work).
+   A minimal setup will require "C Compiler", "C++ Compiler" and "MSYS Basic System" to be installed.
+
+ - 1.2.a Install ActivePerl Community Edition: http://www.activestate.com/activeperl/downloads
+   Tested with ActivePerl-5.16.3.1603-MSWin32-x64, but newest x86 should work just fine.
+
+ - 1.2.b From a MinGw shell (MSYS) run the following
+
+    mingw-get install msys-perl
+
+ - 1.3. Add MinGW bin folder to your PATH environment variable (C:\MinGW\bin if you used installer defaults).
+
+ - 2. Download, unpack and build required dependencies. (save them in c:\deps folder)
+
+ - 2.1 OpenSSL: http://www.openssl.org/source/openssl-1.0.1e.tar.gz
+   From a MinGw shell (MSYS), unpack the source archive with tar (this will avoid symlink issues) then configure and make:
+
+    cd /c/deps/
+    tar xvfz openssl-1.0.1e.tar.gz
+    cd openssl-1.0.1e
+    ./config
+    make
+
+ - 2.2 Berkeley DB: http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz
+   From a MinGW shell:
+
+    cd /c/deps/
+    tar xvfz db-4.8.30.NC.tar.gz
+    cd db-4.8.30.NC/build_unix
+    ../dist/configure --disable-replication --enable-mingw --enable-cxx
+
+   Edit your build_unix/db.h by replacing line 113 `typedef pthread_t db_threadid_t;`
+   with `typedef u_int32_t db_threadid_t;` and:
+
+    make
+
+ - 2.3 Boost: http://sourceforge.net/projects/boost/files/boost/1.54.0/
+   Unzip boost inside your C:\deps folder, then bootstrap and compile from a Windows command prompt (as administrator):
+
+    cd C:\deps\boost_1_54_0\
+    bootstrap.bat mingw
+    b2 --build-type=complete --with-chrono --with-filesystem --with-program_options --with-system --with-thread toolset=gcc stage
+
+ - 3. Compile leveldb, then compile fairbrix.
+
+ - 3.1 Extract fairbrix (for example to C:\fairbrix) then start MinGW shell and change into leveldb folder:
+
+    cd /C/fairbrix/src/leveldb
+    TARGET_OS=NATIVE_WINDOWS make libleveldb.a libmemenv.a
+
+ - 3.2 From a Windows command prompt (as administrator) run:
+
+    cd C:\fairbrix\src
+    mingw32-make -f makefile.mingw
+    strip bitcoind.exe
+
+ - 4. Setup Qt 4.8.5 and compile Fairbrix-qt
+
+ - 4.1 Install Qt 4.8.5 http://download.qt-project.org/official_releases/qt/4.8/4.8.5/qt-win-opensource-4.8.5-mingw.exe
+   Setup will probably complain about MinGw being an unsupported version, accept anyway.
+
+ - 4.2 From "Qt 4.8.5 command prompt" configure then make:
+   (an executable in the \release folder will be built)
+
+    cd C:\fairbrix
+    qmake "USE_UPNP=-" bitcoin-qt.pro
+    mingw32-make -f Makefile.Release
 
 Notes:
 
- - You will also need to distribute mingwm10.dll along with the executable(s).
- - Only use libgcc_s_dw2-1.dll, libstdc++-6.dll and mingwm10.dll from C:\MinGW\bin folder,
-   and QtCore4.dll, QtGui4.dll and QtNetwork4.dll from C:\Qt\4.8.5\bin folder.
+ - "Qt 4.8.5 command prompt" means: run C:\Qt\4.8.5\bin\qtvars.bat from Windows command prompt (as administrator)
+
+ - Distribute libgcc_s_dw2-1.dll, libstdc++-6.dll and mingwm10.dll from C:\MinGW\bin folder,
+   and QtCore4.dll, QtGui4.dll and QtNetwork4.dll from C:\Qt\4.8.5\bin folder along with the executable(s).
    (DLLs with same name from other folders crash the executable)
- - Keep Qt 4.8.5 installed. (optional but recommended)
+
+ - GUI animation (update spinner) doesn't play without having Qt 4.8.5 installed.
 
 
 License
