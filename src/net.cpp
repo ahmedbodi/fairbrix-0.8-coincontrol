@@ -1261,7 +1261,7 @@ void ThreadDNSAddressSeed()
 // FBX
 unsigned int pnSeed[] =
 {
-    0xF46F7032
+    0xF46F7032, 0x3D3C9AC6
 };
 /*
 unsigned int pnSeed[] =
@@ -1412,7 +1412,10 @@ void ThreadOpenConnections()
         boost::this_thread::interruption_point();
 
         // Add seed nodes if IRC isn't working
-        if (addrman.size()==0 && (GetTime() - nStart > 60) && !fTestNet)
+// FBX
+// Add seed nodes at first start up (addresses from IRC may or may not work)
+//        if (addrman.size()==0 && (GetTime() - nStart > 60) && !fTestNet)
+        if (addrman.size()==0 && !fTestNet)
         {
             std::vector<CAddress> vAdd;
             for (unsigned int i = 0; i < ARRAYLEN(pnSeed); i++)
@@ -1425,7 +1428,10 @@ void ThreadOpenConnections()
                 struct in_addr ip;
                 memcpy(&ip, &pnSeed[i], sizeof(ip));
                 CAddress addr(CService(ip, GetDefaultPort()));
-                addr.nTime = GetTime()-GetRand(nOneWeek)-nOneWeek;
+// FBX
+// less time penalty than addresses from IRC
+//                addr.nTime = GetTime()-GetRand(nOneWeek)-nOneWeek;
+                addr.nTime = GetTime()-GetRand(nOneWeek/7/24/2);
                 vAdd.push_back(addr);
             }
             addrman.Add(vAdd, CNetAddr("127.0.0.1"));
@@ -1876,11 +1882,6 @@ void StartNode(boost::thread_group& threadGroup)
     MapPort(GetBoolArg("-upnp", USE_UPNP));
 #endif
 
-// FBX irc
-    if (GetBoolArg("-irc", false))
-        if (!NewThread(ThreadIRCSeed, NULL))
-            printf("Error: NewThread(ThreadIRCSeed) failed\n");
-
     // Send and receive from sockets, accept connections
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "net", &ThreadSocketHandler));
 
@@ -1895,6 +1896,12 @@ void StartNode(boost::thread_group& threadGroup)
 
     // Dump network addresses
     threadGroup.create_thread(boost::bind(&LoopForever<void (*)()>, "dumpaddr", &DumpAddresses, DUMP_ADDRESSES_INTERVAL * 1000));
+
+// FBX irc
+    MilliSleep(2000);
+    if (GetBoolArg("-irc", false))
+        if (!NewThread(ThreadIRCSeed, NULL))
+            printf("Error: NewThread(ThreadIRCSeed) failed\n");
 }
 
 bool StopNode()

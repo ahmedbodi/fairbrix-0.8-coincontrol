@@ -61,7 +61,7 @@ To compile using Qt 5.1.1 see https://bitcointalk.org/index.php?topic=149479.0
 
 To compile using Qt 4.8.5
 
-1. Prepare your build system. I suggest setting up a clean virtual machine (Windows7 SP1 64bit)
+1 Prepare your build system. I suggest setting up a clean virtual machine (Windows7 SP1 64bit)
 via Virtualbox or similar.
 
 1.1 Install MinGW: https://sourceforge.net/downloads/mingw
@@ -77,7 +77,7 @@ Tested with ActivePerl-5.16.3.1603-MSWin32-x64, but newest x86 should work just 
 
 1.3 Add MinGW bin folder to your PATH environment variable (C:\MinGW\bin if you used installer defaults).
 
-2. Download, unpack and build required dependencies. (save them in c:\deps folder)
+2 Download, unpack and build required dependencies. (save them in c:\deps folder)
 
 2.1 OpenSSL: http://www.openssl.org/source/openssl-1.0.1e.tar.gz
 From a MinGw shell (MSYS), unpack the source archive with tar (this will avoid symlink issues) then configure and make:
@@ -108,7 +108,7 @@ Unzip boost inside your C:\deps folder, then bootstrap and compile from a Window
     bootstrap.bat mingw
     b2 --build-type=complete --with-chrono --with-filesystem --with-program_options --with-system --with-thread toolset=gcc stage
 
-3. Compile leveldb, then compile fairbrix.
+3 Compile leveldb, then compile fairbrix.
 
 3.1 Extract fairbrix (for example to C:\fairbrix) then start MinGW shell and change into leveldb folder:
 
@@ -121,7 +121,7 @@ Unzip boost inside your C:\deps folder, then bootstrap and compile from a Window
     mingw32-make -f makefile.mingw
     strip bitcoind.exe
 
-4. Setup Qt 4.8.5 and compile Fairbrix-qt
+4 Setup Qt 4.8.5 and compile Fairbrix-qt
 
 4.1 Install Qt 4.8.5 http://download.qt-project.org/official_releases/qt/4.8/4.8.5/qt-win-opensource-4.8.5-mingw.exe
 Setup will probably complain about MinGw being an unsupported version, accept anyway.
