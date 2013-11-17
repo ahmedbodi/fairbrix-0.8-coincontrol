@@ -287,10 +287,12 @@ static bool svblockhashtovanity(int nHeight)
     block.ReadFromDisk(pblockindex);
 
     string s = block.GetHash().GetHex();
+    int ls = s.length();
     strPosvTest = "ERROR";
     for (unsigned int k = 0; k < 5; k++)
     {
         int kk = 2 + (k * 3);
+        if (nHeight > 200000) kk = (ls / 2) + (k * 3); // fix: don't use 1st half of chars to avoid leading zeros
         int j = ( (svhextoint(s[kk]) * 256) + (svhextoint(s[kk+1]) * 16) + svhextoint(s[kk+2]) ) % 58;
 
         // vanitygen v0.22 can only generate addresses from fE7... to fdS...

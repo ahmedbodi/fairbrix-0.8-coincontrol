@@ -629,6 +629,7 @@ int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
             // Free transaction area
 // FBX fees
 // since blocks are faster than in bitcoin, reserve less space for free transactions.
+// (see also 'nBlockPrioritySize')
 //            if (nNewBlockSize < 27000)
             if (nNewBlockSize < 12000)
                 nMinFee = 0;
@@ -4344,7 +4345,9 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
 
         // Keep-alive ping. We send a nonce of zero because we don't use it anywhere
         // right now.
-        if (pto->nLastSend && GetTime() - pto->nLastSend > 30 * 60 && pto->vSendMsg.empty()) {
+// FBX ping every 2 minutes, timeout 5 minutes
+//        if (pto->nLastSend && GetTime() - pto->nLastSend > 30 * 60 && pto->vSendMsg.empty()) {
+        if (pto->nLastSend && GetTime() - pto->nLastSend > 2 * 60 && pto->vSendMsg.empty()) {
             uint64 nonce = 0;
             if (pto->nVersion > BIP0031_VERSION)
                 pto->PushMessage("ping", nonce);
@@ -4626,7 +4629,7 @@ CBlockTemplate* CreateNewBlock(CReserveKey& reservekey)
 
     // How much of the block should be dedicated to high-priority transactions,
     // included regardless of the fees they pay
-    unsigned int nBlockPrioritySize = GetArg("-blockprioritysize", 27000);
+    unsigned int nBlockPrioritySize = GetArg("-blockprioritysize", 12000);
     nBlockPrioritySize = std::min(nBlockMaxSize, nBlockPrioritySize);
 
     // Minimum block size you want to create; block will be filled with free transactions

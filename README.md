@@ -119,7 +119,7 @@ Unzip boost inside your C:\deps folder, then bootstrap and compile from a Window
 
     cd C:\fairbrix\src
     mingw32-make -f makefile.mingw
-    strip bitcoind.exe
+    strip fairbrixd.exe
 
 4 Setup Qt 4.8.5 and compile Fairbrix-qt
 
