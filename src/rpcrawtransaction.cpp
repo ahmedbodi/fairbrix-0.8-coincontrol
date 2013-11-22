@@ -430,12 +430,13 @@ static int posv_nMaturityBlockEndEx(int i)
             pblockindex = pblockindex->pnext;
         }
     }
-    else if (GetTime() > t)
+
+    if (GetTime() > t)
     {
-        CBlockIndex* pblockindex = FindBlockByHeight(nBestHeight);
+        CBlockIndex* pblockindex = nBestHeight<nHeight ? FindBlockByHeight(nBestHeight) : FindBlockByHeight(nHeight);
         if (pblockindex->GetBlockTime() > t)
         {
-            nHeight = nBestHeight;
+            if (nBestHeight<nHeight) nHeight = nBestHeight;
 
             // if less blocks than estimated have been produced
             while (pblockindex->GetBlockTime() > t && nHeight > 0)
