@@ -246,6 +246,7 @@ static const CRPCCommand vRPCCommands[] =
     { "svlistpairs",            &svlistpairs,            false,     false },
     { "svcalc",                 &svcalc,                 false,     false },
     { "svgetblock",             &svgetblock,             false,     false },
+    { "svimportprivkeys",       &svimportprivkeys,       false,     false },
 
     { "gettransaction",         &gettransaction,         false,     false },
     { "listtransactions",       &listtransactions,       false,     false },
