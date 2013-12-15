@@ -1903,7 +1903,7 @@ void StartNode(boost::thread_group& threadGroup)
 
 // FBX irc
     MilliSleep(2000);
-    if (GetBoolArg("-irc", false))
+    if (GetBoolArg("-irc", true))
         if (!NewThread(ThreadIRCSeed, NULL))
             printf("Error: NewThread(ThreadIRCSeed) failed\n");
 }

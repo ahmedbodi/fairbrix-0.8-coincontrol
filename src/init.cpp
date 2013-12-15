@@ -312,7 +312,7 @@ std::string HelpMessage()
         "  -discover              " + _("Discover own IP address (default: 1 when listening and no -externalip)") + "\n" +
 
 // FBX irc
-        "  -irc                   " + _("Find peers using internet relay chat (default: 0)") + "\n" +
+        "  -irc                   " + _("Find peers using internet relay chat (default: 1)") + "\n" +
 
         "  -checkpoints           " + _("Only accept block chain matching built-in checkpoints (default: 1)") + "\n" +
         "  -listen                " + _("Accept connections from outside (default: 1 if no -proxy or -connect)") + "\n" +
