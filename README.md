@@ -143,6 +143,14 @@ Notes:
  - GUI animation (update spinner) doesn't play without having Qt 4.8.5 installed.
 
 
+Precompiled packages
+=====================
+
+Windows Qt-client and daemon (fairbrix-0.8-coincontrol-20131217.zip):
+
+    https://mega.co.nz/#!XUlzjSjR!LgCbOE0xfaEcVeWAuxgEpwNzx4tNl56eb2tK5O4RUW4
+
+
 License
 ========
 
