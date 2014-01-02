@@ -142,6 +142,10 @@ extern bool fPrintToDebugger;
 
 // FBX irc
 extern bool fShutdown;
+// FBX ping and configuration settings
+extern bool fFbxXmode;
+extern int nFbxPingtime;
+extern int nFbxTimeout;
 
 extern bool fDaemon;
 extern bool fServer;

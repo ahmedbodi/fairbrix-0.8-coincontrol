@@ -44,7 +44,7 @@ Value svimportprivkeys(const Array& params, bool fHelp)
             "<privkey> <label>\n"
             "etc.");
 
-    if (!GetBoolArg("-xmode", false))
+    if (!fFbxXmode)
         throw runtime_error(
             "Disabled unless xmode=true.");
 

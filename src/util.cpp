@@ -77,6 +77,10 @@ bool fPrintToDebugger = false;
 
 // FBX irc
 bool fShutdown = false;
+// FBX ping and configuration settings
+bool fFbxXmode = false;     // allow to run experimental code
+int nFbxPingtime = 30 * 60; // most coins use these default values (which are not optimal for solo mining)
+int nFbxTimeout = 90*60;
 
 bool fDaemon = false;
 bool fServer = false;

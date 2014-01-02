@@ -501,9 +501,15 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // ********************************************************* Step 2: parameter interactions
 
-// FBX no testnet for the moment
+// FBX ping and configuration settings
 //    fTestNet = GetBoolArg("-testnet");
-    fTestNet = false;
+    fTestNet = false;                            // no testnet for the moment
+    fFbxXmode = GetBoolArg("-xmode", false);     // default: safe mode
+    nFbxPingtime = GetArg("-xpingtime", 1800);   // defaults: ping other nodes every 30 minutes, timeout 90 minutes
+    nFbxTimeout = GetArg("-xtimeout", 5400);
+    if (nFbxPingtime < 120) nFbxPingtime =  120; // minimum 2 minutes, timeout 5 minutes
+    if (nFbxTimeout < 300) nFbxTimeout =  300;
+//    printf("AppInit2() : Read FBX specific configs : nFbxPingtime %d, nFbxTimeout %d\n", nFbxPingtime, nFbxTimeout);
 
     fBloomFilters = GetBoolArg("-bloomfilters");
     if (fBloomFilters)

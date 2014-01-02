@@ -2650,7 +2650,7 @@ bool ProcessBlock(CValidationState &state, CNode* pfrom, CBlock* pblock, CDiskBl
     }
 
 // FBX proof of stake voting test
-    if (nBestHeight>180000 && GetBoolArg("-xmode", false) && GetBoolArg("-txindex", false))
+    if (nBestHeight>180000 && fFbxXmode && fTxIndex)
     {
         strPosxExactMatch = "";
         posxValueDiffIn = posxValueDiffOut = 0;
@@ -4285,9 +4285,9 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
 
         // Keep-alive ping. We send a nonce of zero because we don't use it anywhere
         // right now.
-// FBX ping every 2 minutes, timeout 5 minutes
+// FBX ping and configuration settings
 //        if (pto->nLastSend && GetTime() - pto->nLastSend > 30 * 60 && pto->vSendMsg.empty()) {
-        if (pto->nLastSend && GetTime() - pto->nLastSend > 2 * 60 && pto->vSendMsg.empty()) {
+        if (pto->nLastSend && GetTime() - pto->nLastSend > nFbxPingtime && pto->vSendMsg.empty()) {
             uint64 nonce = 0;
             if (pto->nVersion > BIP0031_VERSION)
                 pto->PushMessage("ping", nonce);

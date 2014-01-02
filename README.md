@@ -151,6 +151,18 @@ Windows Qt-client and daemon (fairbrix-0.8-coincontrol-20131217.zip):
     https://mega.co.nz/#!XUlzjSjR!LgCbOE0xfaEcVeWAuxgEpwNzx4tNl56eb2tK5O4RUW4
 
 
+Linux daemon, statically linked.
+To run in a new empty server (e.g. Ubuntu 32bit Amazon EC2 micro instance):
+
+    wget http://www.xmail.net/wiggi/fairbrixd-0.8-20130904.zip
+    unzip fairbrixd-0.8-20130904.zip
+    mkdir .fairbrix
+    cp -p fairbrixd-0.8-20130904/fbx.conf .fairbrix/
+    cd fairbrixd-0.8-20130904
+    ./fairbrixd -daemon
+    ./fairbrixd getinfo
+
+
 License
 ========
 

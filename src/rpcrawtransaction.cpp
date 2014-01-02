@@ -181,14 +181,14 @@ std::string strPosvTest;// vanity test string, now generated from hash of starti
 bool posv_fOracle;      // poll the oracle
 
 int posv_nMaturity;
-#define POSV_MATURITY_MAX 4
+#define POSV_MATURITY_MAX 5
 // don't give exact time because daily OHLC data should be "good enough"
-std::string posv_strMaturityDesc[POSV_MATURITY_MAX] = {"close of Aug 31, 2013", "close of Sep 30, 2013", "close of Oct 31, 2013", "close of Dec 31, 2013"};
-int64 posv_nMaturityTime[POSV_MATURITY_MAX] = {1377979200, 1380571200, 1383253200, 1388523600};
+std::string posv_strMaturityDesc[POSV_MATURITY_MAX] = {"close of Aug 31, 2013", "close of Sep 30, 2013", "close of Oct 31, 2013", "close of Dec 31, 2013", "close of Mar 31, 2014"};
+int64 posv_nMaturityTime[POSV_MATURITY_MAX] = {1377979200, 1380571200, 1383253200, 1388523600, 1396296000};
 // start block should be several weeks before maturity date even if it costs performance
-int64 posv_nMaturityBlockStart[POSV_MATURITY_MAX] = {168000, 173110, 178000, 181000};
+int64 posv_nMaturityBlockStart[POSV_MATURITY_MAX] = {168000, 173110, 178000, 181000, 201700};
 // this is a raw estimate, block time stamp is used for actual voting end
-int64 posv_nMaturityBlockEnd[POSV_MATURITY_MAX] = {180000, 188000, 196000, 200000};
+int64 posv_nMaturityBlockEnd[POSV_MATURITY_MAX] = {180000, 188000, 196000, 200000, 224000};
 
 int posv_nPair;
 #define POSV_PAIR_MAX 4
@@ -206,23 +206,28 @@ int posvCritCount = 0; // other critical error
 int64 posv_nPairName[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{20613063, 20615077, 0, 0},
                                                           {20613063, 20615077, 139414004, 0},
                                                           {20613063, 20615077, 139414004, 0},
+                                                          {20613063, 20615077, 139414004, 0},
                                                           {20613063, 20615077, 139414004, 0}};
 
 // the following 5 arrays are only used in posv_strDescOracleResult
 int posv_nPairScale[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{5, 2, 0, 0},
                                                          {5, 2, 4, 0},
                                                          {5, 2, 4, 0},
+                                                         {5, 3, 4, 0},
                                                          {5, 3, 4, 0}};
 int posv_nPairMidpoint[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{11, 15,  0, 0},
                                                             {11, 16, 46, 0},
                                                             {11, 16, 46, 0},
-                                                            {11,  8, 46, 0}};
+                                                            {11,  8, 46, 0},
+                                                            { 3,  6, 44, 0}};
 bool posv_fPairIsAlt[POSV_MATURITY_MAX][POSV_PAIR_MAX] = {{0, 0, 0, 0},
+                                                          {0, 0, 0, 0},
                                                           {0, 0, 0, 0},
                                                           {0, 0, 0, 0},
                                                           {0, 0, 0, 0}};
 #define POSV_SCALE_MAX 7 // up to 10 scales
-// alternative scales
+#define POSV_SCALE_SIZE 64
+// alternative scales (fixed size of 10)
 const double posv_AltScales[POSV_SCALE_MAX][10] =
 {{ 0, 0, 0, 1, 2, 3, 4, 5, 6, 7 },
  { 0, 0, 0, 1, 2, 4, 8, 16, 32, 64},
@@ -233,7 +238,7 @@ const double posv_AltScales[POSV_SCALE_MAX][10] =
  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } // reserved
 };
 // logarithmic scales (for currency pairs)
-const double posv_Strikes[POSV_SCALE_MAX][64] =
+const double posv_Strikes[POSV_SCALE_MAX][POSV_SCALE_SIZE] =
 {{0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0,   100000000, 10000000, 1000000, 100000, 10000, 1000, 100, 10,
   1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001,  0, 0, 0, 0, 0, 0, 0, 0,    0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0 },
 
@@ -380,7 +385,7 @@ static string posv_strDescOracleResult(int ivoting, int i, int i2, bool show_res
     }
 
     int x = posv_nPairMidpoint [ivoting] [i];
-    if (x < 4 || x >= 63-4)                    // fixme: is 3 ok?, use constant
+    if (x < 3 || x >= POSV_SCALE_SIZE - 3)
         return sd;
 
     if (show_result)
@@ -580,11 +585,6 @@ Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
         result.push_back(Pair("transaction#", i1));
         result.push_back(Pair("tx hash", tx.GetHash().GetHex()));
         }
-        else
-        {
-            // we probably don't need to do this
-            tx.GetHash().GetHex();
-        }
 
         // code from TxToJSON
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
@@ -599,9 +599,6 @@ Object posvblockToJSON(const CBlock& block, const CBlockIndex* blockindex)
             {
                 if (!posvFastmode)
                     result.push_back(Pair("input from txid", txin.prevout.hash.GetHex()));
-                // we probably don't need to do this
-                else
-                    txin.prevout.hash.GetHex();
 
                 int64 vout2 = (boost::int64_t)txin.prevout.n;
                 if (!posvFastmode)
