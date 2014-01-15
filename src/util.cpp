@@ -79,6 +79,7 @@ bool fPrintToDebugger = false;
 bool fShutdown = false;
 // FBX ping and configuration settings
 bool fFbxXmode = false;     // allow to run experimental code
+bool fFbxProxyRecognizable = false;     // different icon and window caption when proxified
 int nFbxPingtime = 30 * 60; // most coins use these default values (which are not optimal for solo mining)
 int nFbxTimeout = 90*60;
 

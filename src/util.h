@@ -144,6 +144,7 @@ extern bool fPrintToDebugger;
 extern bool fShutdown;
 // FBX ping and configuration settings
 extern bool fFbxXmode;
+extern bool fFbxProxyRecognizable;
 extern int nFbxPingtime;
 extern int nFbxTimeout;
 

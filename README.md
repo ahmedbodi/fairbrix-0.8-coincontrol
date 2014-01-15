@@ -1,4 +1,4 @@
-Fairbrix is the second oldest scrypt based cryptocoin.
+Fairbrix is the second oldest scrypt based cryptocoin (after Tenebrix).
  - scrypt as a proof of work scheme
  - 5 minute block targets
  - 25 coins per block (constant forever)
@@ -7,18 +7,7 @@ Fairbrix is the second oldest scrypt based cryptocoin.
 This version (Fairbrix v0.8.5.1beta) is based on Litecoin version 'exp-0.8.3.7-cc',
 Bitcoin v0.8.1 (for IRC node discovery) and Litecoin v0.8.5.1 (for security fixes).
 
-Litecoin is a lite version of Bitcoin using scrypt as a proof of work scheme.
- - 2.5 minute block targets
- - subsidy halves in 840k blocks (~4 years)
- - ~84 million total coins
-The rest is the same as bitcoin.
- - 50 coins per block
- - 2016 blocks to retarget difficulty
-
-Bitcoin is a free open source peer-to-peer electronic cash system that is
-completely decentralized, without the need for a central server or trusted
-parties.  Users hold the crypto keys to their own money and transact directly
-with each other, with the help of a P2P network to check for double-spending.
+Q&D list of planned features: https://github.com/wiggi/fairbrix-0.8-coincontrol/blob/master/README.md
 
 
 Build instructions 

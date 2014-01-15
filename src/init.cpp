@@ -528,6 +528,10 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 
     if (mapArgs.count("-proxy")) {
+
+// FBX ping and configuration settings
+        fFbxProxyRecognizable = GetBoolArg("-xproxyrecognizable", false);
+
         // to protect privacy, do not listen by default if a proxy server is specified
         SoftSetBoolArg("-listen", false);
     }
