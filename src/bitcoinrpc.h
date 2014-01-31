@@ -204,6 +204,7 @@ extern json_spirit::Value svlistpairs(const json_spirit::Array& params, bool fHe
 extern json_spirit::Value svcalc(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value svgetblock(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value svimportprivkeys(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svlistmatched(const json_spirit::Array& params, bool fHelp);
 
 extern json_spirit::Value gettxoutsetinfo(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value gettxout(const json_spirit::Array& params, bool fHelp);

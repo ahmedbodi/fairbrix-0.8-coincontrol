@@ -1072,6 +1072,306 @@ Value svcalc(const Array& params, bool fHelp)
 
     return result2;
 }
+std::string strPosvReturnAddress;
+bool fPosvReturnAddressGood;
+int nPosvReturnAddressError;
+bool fPosvReturnAddressWarnCh;
+bool fPosvReturnAddressWarnEx;
+static bool svlistmatchedScriptPubKeyToJSON(const CScript& scriptPubKey)
+{
+    txnouttype type;
+    vector<CTxDestination> addresses;
+    int nRequired;
+
+    if (!ExtractDestinations(scriptPubKey, type, addresses, nRequired))
+    {
+        nPosvReturnAddressError = 7;
+        return false;
+    }
+
+    int n = 0;
+    string s = "";
+    BOOST_FOREACH(const CTxDestination& addr, addresses)
+    {
+        s = CBitcoinAddress(addr).ToString();
+
+        // catch exchange addresses
+        if ((s[1] == 'X') &&
+            ((s[2] == 'A') || (s[2] == 'a') || (s[2] == 'B') || (s[2] == 'b')))  // bid+ask, and 2 trading rounds at the same time
+        {
+            int iround = (s[2] == 'a' || s[2] == 'b') ? 1 : 0;
+            int iask = (s[2] == 'a' || s[2] == 'A') ? 1 : 0;
+
+            // (s[3]<0 || s[3]>=128) 'is always false due to limited range of data type [-Wtype-limits]'
+            int ipair = posx_ReverseBase58[(int)s[3]] - 1;
+            int ianswer = s[4] - '1';                           // always <10
+            int iprob = posx_ReverseBase58[(int)s[5]] - 1;
+            if (iround >= 0 && iround < POSX_ROUND_MAX &&
+                iask >= 0 && iask < POSX_ASK_MAX &&
+                ipair >= 0 && ipair < POSX_PAIR_MAX &&
+                ianswer >= 0 && ianswer < POSX_ANSWER_MAX &&
+                iprob >= 0 && iprob < POSX_PROB_MAX)
+            {
+                if (s.compare(strPosxAddresses[iround][ipair][ianswer][iask][iprob]) == 0)
+                    return false;
+            }
+        }
+
+        n++;
+    }
+
+    if (!n)
+    {
+        nPosvReturnAddressError = 6;
+        return false;
+    }
+
+    // notice outputs with many addresses
+    if (n > 1)
+    {
+        nPosvReturnAddressError = 5;
+        return false;
+    }
+
+    strPosvReturnAddress = s;
+    fPosvReturnAddressGood = true;
+    return true;
+}
+
+static bool svlistmatchedTxToJSONout(const CTransaction& tx, const uint256 hashBlock)
+{
+    Array vout;
+    for (unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+        if (!fPosvReturnAddressGood)
+            if (!svlistmatchedScriptPubKeyToJSON(txout.scriptPubKey))
+            {
+                // unavoidable, so don't return false
+                fPosvReturnAddressWarnEx = true;
+            }
+    }
+    return true;
+}
+static bool svlistmatchedTxToJSONin(const CTransaction& tx, const uint256 hashBlock)
+{
+    Array vin;
+    BOOST_FOREACH(const CTxIn& txin, tx.vin)
+    {
+        Object in;
+        if (tx.IsCoinBase())
+        {
+            HexStr(txin.scriptSig.begin(), txin.scriptSig.end());  // "always do this"
+            nPosvReturnAddressError = 3;
+            return false;
+        }
+        else
+        {
+            CTransaction tx2;
+            uint256 hashBlock2 = 0;
+
+            if (!GetTransaction(txin.prevout.hash, tx2, hashBlock2, true))
+            {
+                // "No information available about transaction"
+                nPosvReturnAddressError = 2;
+                return false;
+            }
+
+            if (!fPosvReturnAddressGood)
+                svlistmatchedTxToJSONout(tx2, hashBlock2);
+        }
+    }
+    return true;
+}
+static bool svlistmatchedGetrawtransaction(uint256 hash)
+{
+    strPosvReturnAddress = "";
+    fPosvReturnAddressGood = false;
+    fPosvReturnAddressWarnCh = fPosvReturnAddressWarnEx = false;
+
+    CTransaction tx;
+    uint256 hashBlock = 0;
+
+    // "No information available about transaction"
+    if (!GetTransaction(hash, tx, hashBlock, true))
+    {
+        nPosvReturnAddressError = 1;
+        return false;
+    }
+
+    svlistmatchedTxToJSONout(tx, hashBlock);
+
+    if (!fPosvReturnAddressGood)
+    {
+        fPosvReturnAddressWarnCh = true;
+        svlistmatchedTxToJSONin(tx, hashBlock);
+    }
+
+    return true;
+}
+// modified listunspent to determine the 'unmatched'/'at least partially matched' status of limit orders
+Value svlistmatched(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 2)
+        throw runtime_error(
+            "svlistmatched [minconf=1] [maxconf=9999999]\n"
+            "Returns array of unspent transaction outputs\n"
+            "with between minconf and maxconf (inclusive) confirmations.\n"
+            "Filtered to only include txouts that represent\n"
+            "limit orders in the internal order books.");
+
+    RPCTypeCheck(params, list_of(int_type)(int_type)(array_type));
+
+    int nMinDepth = 1;
+    if (params.size() > 0)
+        nMinDepth = params[0].get_int();
+
+    int nMaxDepth = 9999999;
+    if (params.size() > 1)
+        nMaxDepth = params[1].get_int();
+
+    // scan all order books
+    int nTotalBids = 0;
+    int nTotalAsks = 0;
+    int nTotalMatches = 0;
+    Array results;
+    for (int iround = 0; iround < POSX_ROUND_MAX; iround++)
+    for (int ipair = 0; ipair < POSX_PAIR_MAX; ipair++)
+    for (int ianswer = 0; ianswer < POSX_ANSWER_MAX; ianswer++)
+    for (int iprob = 0; iprob < POSX_PROB_MAX; iprob++)
+    {
+    int nCountBid = 0;
+    int iOldestBid = 0;
+    for (int iask = 0; iask < POSX_ASK_MAX; iask++)
+    {
+
+    int nCount = 0;
+    int nConfirmationsOldest = 0;
+    int iOldest = 0;
+
+    // get address from order books
+    set<CBitcoinAddress> setAddress;
+    setAddress.insert(strPosxAddresses[iround][ipair][ianswer][iask][iprob]);
+
+    vector<COutput> vecOutputs;
+    pwalletMain->AvailableCoins(vecOutputs, false);
+    BOOST_FOREACH(const COutput& out, vecOutputs)
+    {
+        if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
+            continue;
+
+        if (setAddress.size())
+        {
+            CTxDestination address;
+            if (!ExtractDestination(out.tx->vout[out.i].scriptPubKey, address))
+                continue;
+
+            if (!setAddress.count(address))
+                continue;
+        }
+
+        int64 nValue = out.tx->vout[out.i].nValue;
+        const CScript& pk = out.tx->vout[out.i].scriptPubKey;
+        Object entry;
+
+        // find an address that belongs to the user who sent coins to this order book addr
+        entry.push_back(Pair("index", nCount));
+        svlistmatchedGetrawtransaction(out.tx->GetHash());
+        entry.push_back(Pair("return address", strPosvReturnAddress));
+        if (nPosvReturnAddressError) entry.push_back(Pair("return address error", nPosvReturnAddressError));
+        if (fPosvReturnAddressWarnCh) entry.push_back(Pair("return address warning", "tx has no change"));
+        if (fPosvReturnAddressWarnEx) entry.push_back(Pair("return address warning", "exchange addr found"));
+
+        entry.push_back(Pair("txid", out.tx->GetHash().GetHex()));
+        entry.push_back(Pair("vout", out.i));
+        CTxDestination address;
+        if (ExtractDestination(out.tx->vout[out.i].scriptPubKey, address))
+        {
+            entry.push_back(Pair("address", CBitcoinAddress(address).ToString()));
+            if (pwalletMain->mapAddressBook.count(address))
+                entry.push_back(Pair("account", pwalletMain->mapAddressBook[address]));
+        }
+        entry.push_back(Pair("scriptPubKey", HexStr(pk.begin(), pk.end())));
+        if (pk.IsPayToScriptHash())
+        {
+            CTxDestination address;
+            if (ExtractDestination(pk, address))
+            {
+                const CScriptID& hash = boost::get<const CScriptID&>(address);
+                CScript redeemScript;
+                if (pwalletMain->GetCScript(hash, redeemScript))
+                    entry.push_back(Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
+            }
+        }
+        entry.push_back(Pair("amount",ValueFromAmount(nValue)));
+        entry.push_back(Pair("confirmations",out.nDepth));
+
+
+        if (out.nDepth > nConfirmationsOldest)
+        {
+            nConfirmationsOldest = out.nDepth;
+            iOldest = nCount;
+        }
+        nCount++;
+
+        if (!iask)
+        {
+            nCountBid = nCount;
+            iOldestBid = iOldest;
+
+            nTotalBids++;
+        }
+        else
+        {
+            nTotalAsks++;
+        }
+
+        results.push_back(entry);
+    }
+
+    if (nCount)
+    {
+        Object entry2;
+        entry2.push_back(Pair("trading round",iround));
+        entry2.push_back(Pair("contract",ipair));
+        entry2.push_back(Pair("book",ianswer));
+        entry2.push_back(Pair("price level",iprob));
+        if (iask) entry2.push_back(Pair("bids at this price level",nCount));
+        else entry2.push_back(Pair("asks at this price level",nCount));
+        entry2.push_back(Pair("confirmations of oldest",nConfirmationsOldest));
+        entry2.push_back(Pair("index of oldest",iOldest));
+        results.push_back(entry2);
+    }
+
+    if (iask && nCountBid && nCount)
+    {
+        // find exactly 1 match (the one with most confirmations, fill or partial fill) per price level
+        Object entry3;
+        entry3.push_back(Pair("match: index of bid",iOldestBid));
+        entry3.push_back(Pair("match: index of ask",iOldest));
+        results.push_back(entry3);
+
+        nTotalMatches++;
+    }
+
+    } // scan all order books
+    }
+
+    Object entry4;
+    if (nTotalBids || nTotalAsks)
+    {
+        entry4.push_back(Pair("total bids",nTotalBids));
+        entry4.push_back(Pair("total asks",nTotalAsks));
+        entry4.push_back(Pair("unresolved matches",nTotalMatches));
+    }
+    else
+    {
+        entry4.push_back(Pair("found nothing","exchange wallet probably not loaded"));
+    }
+    results.push_back(entry4);
+
+    return results;
+}
 
 Value listunspent(const Array& params, bool fHelp)
 {
