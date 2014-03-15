@@ -135,19 +135,19 @@ Notes:
 Precompiled packages
 =====================
 
-Windows Qt-client and daemon (fairbrix-0.8-coincontrol-20131217.zip):
+Windows Qt-client and daemon (fairbrix-0.8-coincontrol-20140315.zip):
 
-    https://mega.co.nz/#!XUlzjSjR!LgCbOE0xfaEcVeWAuxgEpwNzx4tNl56eb2tK5O4RUW4
+    https://mega.co.nz/#!zE1HVbrK!7c8xZqeK7WpG-AOgNqgLRQyMOj2Fm9bYHp-kOjbksfE
 
 
 Linux daemon, statically linked.
 To run in a new empty server (e.g. Ubuntu 32bit Amazon EC2 micro instance):
 
-    wget http://www.xmail.net/wiggi/fairbrixd-0.8-20130904.zip
-    unzip fairbrixd-0.8-20130904.zip
+    wget http://www.xmail.net/wiggi/fairbrixd-0.8-20140107.zip
+    unzip fairbrixd-0.8-20140107.zip
     mkdir .fairbrix
-    cp -p fairbrixd-0.8-20130904/fbx.conf .fairbrix/
-    cd fairbrixd-0.8-20130904
+    cp -p fairbrixd-0.8-20140107/fbx.conf .fairbrix/
+    cd fairbrixd-0.8-20140107
     ./fairbrixd -daemon
     ./fairbrixd getinfo
 
