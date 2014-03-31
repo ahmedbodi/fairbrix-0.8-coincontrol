@@ -7,7 +7,11 @@ Fairbrix is the second oldest scrypt based cryptocoin (after Tenebrix).
 This version (Fairbrix v0.8.5.1beta) is based on Litecoin version 'exp-0.8.3.7-cc',
 Bitcoin v0.8.1 (for IRC node discovery) and Litecoin v0.8.5.1 (for security fixes).
 
-Q&D list of planned features: https://github.com/wiggi/fairbrix-0.8-coincontrol/blob/master/README.md
+
+IMPORTANT:
+
+If you can't sync ('too little proof-of-work' error), use the version from Jan 02, 2014:
+https://github.com/wiggi/fairbrix-0.8-coincontrol/tree/dd1e67e283f62647255715925fda006a3b2b1159
 
 
 Build instructions 
@@ -135,9 +139,9 @@ Notes:
 Precompiled packages
 =====================
 
-Windows Qt-client and daemon (fairbrix-0.8-coincontrol-20140315.zip):
+Windows Qt-client and daemon (fairbrix-0.8-coincontrol-20140102.zip):
 
-    https://mega.co.nz/#!zE1HVbrK!7c8xZqeK7WpG-AOgNqgLRQyMOj2Fm9bYHp-kOjbksfE
+    https://mega.co.nz/#!zRMEgJYb!V8qCryWOUDHt_kJEO6MUOyYT2DYA-quG4azHuQcAZuk
 
 
 Linux daemon, statically linked.
