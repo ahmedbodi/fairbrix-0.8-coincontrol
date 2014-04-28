@@ -8,12 +8,6 @@ This version (Fairbrix v0.8.5.1beta) is based on Litecoin version 'exp-0.8.3.7-c
 Bitcoin v0.8.1 (for IRC node discovery) and Litecoin v0.8.5.1 (for security fixes).
 
 
-IMPORTANT:
-
-If you can't sync ('too little proof-of-work' error), use the version from Jan 02, 2014:
-https://github.com/wiggi/fairbrix-0.8-coincontrol/tree/dd1e67e283f62647255715925fda006a3b2b1159
-
-
 Build instructions 
 ===================
 
@@ -72,12 +66,12 @@ Tested with ActivePerl-5.16.3.1603-MSWin32-x64, but newest x86 should work just 
 
 2 Download, unpack and build required dependencies. (save them in c:\deps folder)
 
-2.1 OpenSSL: http://www.openssl.org/source/openssl-1.0.1e.tar.gz
+2.1 OpenSSL: http://www.openssl.org/source/openssl-1.0.1g.tar.gz
 From a MinGw shell (MSYS), unpack the source archive with tar (this will avoid symlink issues) then configure and make:
 
     cd /c/deps/
-    tar xvfz openssl-1.0.1e.tar.gz
-    cd openssl-1.0.1e
+    tar xvfz openssl-1.0.1g.tar.gz
+    cd openssl-1.0.1g
     ./config
     make
 

@@ -18,18 +18,14 @@ CONFIG += thread
 # Dependency library locations can be customized with:
 #    BOOST_INCLUDE_PATH, BOOST_LIB_PATH, BDB_INCLUDE_PATH,
 #    BDB_LIB_PATH, OPENSSL_INCLUDE_PATH and OPENSSL_LIB_PATH respectively
-
-# Windows build instructions:
-# https://bitcointalk.org/index.php?topic=149479.0
-#
 windows: {
 BOOST_LIB_SUFFIX=-mgw46-mt-sd-1_54
 BOOST_INCLUDE_PATH=C:\deps\boost_1_54_0
 BOOST_LIB_PATH=C:\deps\boost_1_54_0\stage\lib
 BDB_INCLUDE_PATH=C:\deps\db-4.8.30.NC\build_unix
 BDB_LIB_PATH=C:\deps\db-4.8.30.NC\build_unix
-OPENSSL_INCLUDE_PATH=C:\deps\openssl-1.0.1e\include
-OPENSSL_LIB_PATH=C:\deps\openssl-1.0.1e
+OPENSSL_INCLUDE_PATH=C:\deps\openssl-1.0.1g\include
+OPENSSL_LIB_PATH=C:\deps\openssl-1.0.1g
 }
 
 OBJECTS_DIR = build
