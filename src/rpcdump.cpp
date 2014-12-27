@@ -32,6 +32,76 @@ public:
     }
 };
 
+// FBX proof of stake voting test
+Value svimportprivkeys(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "svimportprivkeys\n"
+            "Add private keys from file 'svimportprivkeys.txt' to your wallet.\n"
+            "Format:\n"
+            "<privkey> <label>\n"
+            "<privkey> <label>\n"
+            "etc.");
+
+    if (!fFbxXmode)
+        throw runtime_error(
+            "Disabled unless xmode=true.");
+
+    FILE *fp;
+    fp = fopen("svimportprivkeys.txt", "r");
+    if (fp == NULL)
+        throw runtime_error(
+            "Can't read svimportprivkeys.txt.");
+
+    char sk[100], sl[100];
+
+    for (unsigned int i = 0; i < 3192; i++)
+    {
+        if (fscanf(fp, "%52s ", sk) < 1)
+        {
+            fclose(fp);
+            return "End of file (please close and restart fairbrix)";
+        }
+
+        if (fscanf(fp, "%99s ", sl) < 1)
+        {
+            fclose(fp);
+            return "Error: couldn't read label";
+        }
+
+        string strSecret;
+        string strLabel;
+        strSecret.assign(sk);
+        strLabel.assign(sl);
+
+        CBitcoinSecret vchSecret;
+        bool fGood = vchSecret.SetString(strSecret);
+
+        if (!fGood) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+
+        CKey key = vchSecret.GetKey();
+        CPubKey pubkey = key.GetPubKey();
+        CKeyID vchAddress = pubkey.GetID();
+        {
+            LOCK2(cs_main, pwalletMain->cs_wallet);
+
+            pwalletMain->MarkDirty();
+            pwalletMain->SetAddressBookName(vchAddress, strLabel);
+
+            if (!pwalletMain->AddKeyPubKey(key, pubkey))
+                throw JSONRPCError(RPC_WALLET_ERROR, "Error adding key to wallet");
+
+        }
+
+        MilliSleep(10);
+
+    }
+
+    fclose(fp);
+    return "Imported 3192 keys (please close and restart fairbrix)";
+}
+
 Value importprivkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)

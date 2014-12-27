@@ -266,6 +266,57 @@ Value setmininput(const Array& params, bool fHelp)
 }
 
 
+// FBX in-wallet exchange test
+// modified sendtoaddress -- we want to send a specific unspent output to a specific address
+std::string strPosx2CancelAddress;
+std::string strPosx2CancelscriptPubKey;
+bool HavePosx2CancelAddress = false;
+bool UsePosx2CancelAddress = false;
+
+Value svsendtoaddress(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 1)
+        throw runtime_error(
+            "svsendtoaddress <amount>\n"
+            "<amount> is a real and is rounded to the nearest 0.00000001"
+            + HelpRequiringPassphrase());
+
+//    CBitcoinAddress address(params[0].get_str());
+    CBitcoinAddress address(strPosx2CancelAddress);
+
+    if (!HavePosx2CancelAddress)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "no address, nothing to do");
+
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Fairbrix address");
+
+    // Amount
+//    int64 nAmount = AmountFromValue(params[1]);
+    int64 nAmount = AmountFromValue(params[0]);
+
+    // Wallet comments
+    CWalletTx wtx;
+//    if (params.size() > 2 && params[2].type() != null_type && !params[2].get_str().empty())
+//        wtx.mapValue["comment"] = params[2].get_str();
+//    if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
+//        wtx.mapValue["to"]      = params[3].get_str();
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+
+    UsePosx2CancelAddress = true;
+
+    string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, wtx);
+    if (strError != "")
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+
+    UsePosx2CancelAddress = false;
+    HavePosx2CancelAddress = false;
+
+    return wtx.GetHash().GetHex();
+}
+
+
 Value sendtoaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 4)

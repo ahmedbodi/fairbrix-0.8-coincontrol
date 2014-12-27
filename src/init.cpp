@@ -78,6 +78,9 @@ volatile bool fRequestShutdown = false;
 
 void StartShutdown()
 {
+// FBX irc
+    fShutdown = true;
+
     fRequestShutdown = true;
 }
 bool ShutdownRequested()
@@ -307,6 +310,10 @@ std::string HelpMessage()
         "  -externalip=<ip>       " + _("Specify your own public address") + "\n" +
         "  -onlynet=<net>         " + _("Only connect to nodes in network <net> (IPv4, IPv6 or Tor)") + "\n" +
         "  -discover              " + _("Discover own IP address (default: 1 when listening and no -externalip)") + "\n" +
+
+// FBX irc
+        "  -irc                   " + _("Find peers using internet relay chat (default: 1)") + "\n" +
+
         "  -checkpoints           " + _("Only accept block chain matching built-in checkpoints (default: 1)") + "\n" +
         "  -listen                " + _("Accept connections from outside (default: 1 if no -proxy or -connect)") + "\n" +
         "  -bind=<addr>           " + _("Bind to given address and always listen on it. Use [host]:port notation for IPv6") + "\n" +
@@ -365,7 +372,7 @@ std::string HelpMessage()
         "\n" + _("Block creation options:") + "\n" +
         "  -blockminsize=<n>      "   + _("Set minimum block size in bytes (default: 0)") + "\n" +
         "  -blockmaxsize=<n>      "   + _("Set maximum block size in bytes (default: 250000)") + "\n" +
-        "  -blockprioritysize=<n> "   + _("Set maximum size of high-priority/low-fee transactions in bytes (default: 27000)") + "\n" +
+        "  -blockprioritysize=<n> "   + _("Set maximum size of high-priority/low-fee transactions in bytes (default: 12000)") + "\n" +
 
         "\n" + _("SSL options: (see the Litecoin Wiki for SSL setup instructions)") + "\n" +
         "  -rpcssl                                  " + _("Use OpenSSL (https) for JSON-RPC connections") + "\n" +
@@ -494,9 +501,15 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // ********************************************************* Step 2: parameter interactions
 
-// FBX no testnet for the moment
+// FBX ping and configuration settings
 //    fTestNet = GetBoolArg("-testnet");
-    fTestNet = false;
+    fTestNet = false;                            // no testnet for the moment
+    fFbxXmode = GetBoolArg("-xmode", false);     // default: safe mode
+    nFbxPingtime = GetArg("-xpingtime", 1800);   // defaults: ping other nodes every 30 minutes, timeout 90 minutes
+    nFbxTimeout = GetArg("-xtimeout", 5400);
+    if (nFbxPingtime < 120) nFbxPingtime =  120; // minimum 2 minutes, timeout 5 minutes
+    if (nFbxTimeout < 300) nFbxTimeout =  300;
+//    printf("AppInit2() : Read FBX specific configs : nFbxPingtime %d, nFbxTimeout %d\n", nFbxPingtime, nFbxTimeout);
 
     fBloomFilters = GetBoolArg("-bloomfilters");
     if (fBloomFilters)
@@ -515,6 +528,10 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 
     if (mapArgs.count("-proxy")) {
+
+// FBX ping and configuration settings
+        fFbxProxyRecognizable = GetBoolArg("-xproxyrecognizable", false);
+
         // to protect privacy, do not listen by default if a proxy server is specified
         SoftSetBoolArg("-listen", false);
     }

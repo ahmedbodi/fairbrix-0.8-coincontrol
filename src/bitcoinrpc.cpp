@@ -241,6 +241,14 @@ static const CRPCCommand vRPCCommands[] =
 // FBX proof of stake voting test
     { "svdebugblock",           &svdebugblock,           false,     false },
     { "svscanblocks",           &svscanblocks,           false,     false },
+    { "svgetoracle",            &svgetoracle,            false,     false },
+    { "svlistvotings",          &svlistvotings,          false,     false },
+    { "svlistpairs",            &svlistpairs,            false,     false },
+    { "svcalc",                 &svcalc,                 false,     false },
+    { "svgetblock",             &svgetblock,             false,     false },
+    { "svimportprivkeys",       &svimportprivkeys,       false,     false },
+    { "svlistmatched",          &svlistmatched,          false,     false },
+    { "svsendtoaddress",        &svsendtoaddress,        false,     false },
 
     { "gettransaction",         &gettransaction,         false,     false },
     { "listtransactions",       &listtransactions,       false,     false },
@@ -485,7 +493,7 @@ bool HTTPAuthorized(map<string, string>& mapHeaders)
         return false;
     string strUserPass64 = strAuth.substr(6); boost::trim(strUserPass64);
     string strUserPass = DecodeBase64(strUserPass64);
-    return strUserPass == strRPCUserColonPass;
+    return TimingResistantEqual(strUserPass, strRPCUserColonPass);
 }
 
 //
@@ -1150,6 +1158,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "stop"                   && n > 0) ConvertTo<bool>(params[0]);
     if (strMethod == "getaddednodeinfo"       && n > 0) ConvertTo<bool>(params[0]);
     if (strMethod == "getnetworkhashps"       && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "getnetworkhashps"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "sendtoaddress"          && n > 1) ConvertTo<double>(params[1]);
     if (strMethod == "settxfee"               && n > 0) ConvertTo<double>(params[0]);
     if (strMethod == "setmininput"            && n > 0) ConvertTo<double>(params[0]);
@@ -1166,6 +1175,17 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "svdebugblock"           && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "svscanblocks"           && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "svscanblocks"           && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svgetoracle"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svgetoracle"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svlistvotings"          && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svlistpairs"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svlistpairs"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svcalc"                 && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svgetblock"             && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svgetblock"             && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svlistmatched"          && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "svlistmatched"          && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svsendtoaddress"        && n > 0) ConvertTo<double>(params[0]);
 
     if (strMethod == "move"                   && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "move"                   && n > 3) ConvertTo<boost::int64_t>(params[3]);

@@ -569,7 +569,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     dialog->findChild<QLabel *>("labelCoinControlLowOutput")    ->setEnabled(nPayAmount > 0);
     dialog->findChild<QLabel *>("labelCoinControlChangeText")   ->setEnabled(nPayAmount > 0);
     dialog->findChild<QLabel *>("labelCoinControlChange")       ->setEnabled(nPayAmount > 0);
-    
+
     // stats
     l1->setText(QString::number(nQuantity));                                 // Quantity        
     l2->setText(BitcoinUnits::formatWithUnit(nDisplayUnit, nAmount));        // Amount
@@ -582,7 +582,9 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     
     // turn labels "red"
     l5->setStyleSheet((nBytes >= 10000) ? "color:red;" : "");               // Bytes >= 10000
-    l6->setStyleSheet((dPriority <= 57600000) ? "color:red;" : "");         // Priority < "medium"
+// FBX 288 blocks found a day, but priority cutoff is 144 (like bitcoin)
+//    l6->setStyleSheet((dPriority <= 57600000) ? "color:red;" : "");         // Priority < "medium"
+    l6->setStyleSheet((dPriority <= 14400000) ? "color:red;" : "");         // Priority < "medium"
     l7->setStyleSheet((fLowOutput) ? "color:red;" : "");                    // Low Output = "yes"
     l8->setStyleSheet((nChange > 0 && nChange < CENT) ? "color:red;" : ""); // Change < 0.01BTC
         

@@ -198,6 +198,14 @@ extern json_spirit::Value getblock(const json_spirit::Array& params, bool fHelp)
 // FBX proof of stake voting test
 extern json_spirit::Value svdebugblock(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value svscanblocks(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svgetoracle(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svlistvotings(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svlistpairs(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svcalc(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svgetblock(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svimportprivkeys(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svlistmatched(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value svsendtoaddress(const json_spirit::Array& params, bool fHelp);
 
 extern json_spirit::Value gettxoutsetinfo(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value gettxout(const json_spirit::Array& params, bool fHelp);

@@ -3,6 +3,9 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+// FBX irc
+#include "irc.h"
+
 #include "db.h"
 #include "net.h"
 #include "init.h"
@@ -618,6 +621,7 @@ void CNode::copyStats(CNodeStats &stats)
     X(nMisbehavior);
     X(nSendBytes);
     X(nRecvBytes);
+    X(nBlocksRequested);
     stats.fSyncNode = (this == pnodeSync);
 }
 #undef X
@@ -1039,12 +1043,16 @@ void ThreadSocketHandler()
                     printf("socket no message in first 60 seconds, %d %d\n", pnode->nLastRecv != 0, pnode->nLastSend != 0);
                     pnode->fDisconnect = true;
                 }
-                else if (GetTime() - pnode->nLastSend > 90*60 && GetTime() - pnode->nLastSendEmpty > 90*60)
+// FBX ping and configuration settings
+//                else if (GetTime() - pnode->nLastSend > 90*60 && GetTime() - pnode->nLastSendEmpty > 90*60)
+                else if (GetTime() - pnode->nLastSend > nFbxTimeout && GetTime() - pnode->nLastSendEmpty > nFbxTimeout)
                 {
                     printf("socket not sending\n");
                     pnode->fDisconnect = true;
                 }
-                else if (GetTime() - pnode->nLastRecv > 90*60)
+// FBX ping and configuration settings
+//                else if (GetTime() - pnode->nLastRecv > 90*60)
+                else if (GetTime() - pnode->nLastRecv > nFbxTimeout)
                 {
                     printf("socket inactivity timeout\n");
                     pnode->fDisconnect = true;
@@ -1257,7 +1265,7 @@ void ThreadDNSAddressSeed()
 // FBX
 unsigned int pnSeed[] =
 {
-    0xB3BAF536, 0x3D3C9AC6
+    0xF46F7032, 0x3D3C9AC6
 };
 /*
 unsigned int pnSeed[] =
@@ -1393,6 +1401,7 @@ void ThreadOpenConnections()
 //        MilliSleep(500);
     int64 nStart = GetTime();
     int64 nStart2 = nStart;
+    int nOutboundPrevious = 0;
     loop
     {
         ProcessOneShot();
@@ -1407,7 +1416,10 @@ void ThreadOpenConnections()
         boost::this_thread::interruption_point();
 
         // Add seed nodes if IRC isn't working
-        if (addrman.size()==0 && (GetTime() - nStart > 60) && !fTestNet)
+// FBX
+// Add seed nodes at first start up (addresses from IRC may or may not work)
+//        if (addrman.size()==0 && (GetTime() - nStart > 60) && !fTestNet)
+        if (addrman.size()==0 && !fTestNet)
         {
             std::vector<CAddress> vAdd;
             for (unsigned int i = 0; i < ARRAYLEN(pnSeed); i++)
@@ -1420,7 +1432,10 @@ void ThreadOpenConnections()
                 struct in_addr ip;
                 memcpy(&ip, &pnSeed[i], sizeof(ip));
                 CAddress addr(CService(ip, GetDefaultPort()));
-                addr.nTime = GetTime()-GetRand(nOneWeek)-nOneWeek;
+// FBX
+// less time penalty than addresses from IRC
+//                addr.nTime = GetTime()-GetRand(nOneWeek)-nOneWeek;
+                addr.nTime = GetTime()-GetRand(nOneWeek/7/24/2);
                 vAdd.push_back(addr);
             }
             addrman.Add(vAdd, CNetAddr("127.0.0.1"));
@@ -1447,7 +1462,8 @@ void ThreadOpenConnections()
 
 // FBX v0.3.x would slow down connection attempts after a few minutes
 // (but not if totally disconnected)
-        if (nOutbound < 1) nStart2 = GetTime();
+        if ((nOutbound < 1) && (nOutbound < nOutboundPrevious)) nStart2 = GetTime();
+        nOutboundPrevious = nOutbound;
 
         int64 nANow = GetAdjustedTime();
 
@@ -1884,6 +1900,12 @@ void StartNode(boost::thread_group& threadGroup)
 
     // Dump network addresses
     threadGroup.create_thread(boost::bind(&LoopForever<void (*)()>, "dumpaddr", &DumpAddresses, DUMP_ADDRESSES_INTERVAL * 1000));
+
+// FBX irc
+    MilliSleep(2000);
+    if (GetBoolArg("-irc", true))
+        if (!NewThread(ThreadIRCSeed, NULL))
+            printf("Error: NewThread(ThreadIRCSeed) failed\n");
 }
 
 bool StopNode()

@@ -1,7 +1,7 @@
 TEMPLATE = app
 TARGET = fairbrix-qt
 macx:TARGET = "Fairbrix-Qt"
-VERSION = 0.8.3.7
+VERSION = 0.8.5.1
 INCLUDEPATH += src src/json src/qt
 QT += core gui network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -18,18 +18,14 @@ CONFIG += thread
 # Dependency library locations can be customized with:
 #    BOOST_INCLUDE_PATH, BOOST_LIB_PATH, BDB_INCLUDE_PATH,
 #    BDB_LIB_PATH, OPENSSL_INCLUDE_PATH and OPENSSL_LIB_PATH respectively
-
-# Windows build instructions:
-# https://bitcointalk.org/index.php?topic=149479.0
-#
 windows: {
 BOOST_LIB_SUFFIX=-mgw46-mt-sd-1_54
 BOOST_INCLUDE_PATH=C:\deps\boost_1_54_0
 BOOST_LIB_PATH=C:\deps\boost_1_54_0\stage\lib
 BDB_INCLUDE_PATH=C:\deps\db-4.8.30.NC\build_unix
 BDB_LIB_PATH=C:\deps\db-4.8.30.NC\build_unix
-OPENSSL_INCLUDE_PATH=C:\deps\openssl-1.0.1e\include
-OPENSSL_LIB_PATH=C:\deps\openssl-1.0.1e
+OPENSSL_INCLUDE_PATH=C:\deps\openssl-1.0.1g\include
+OPENSSL_LIB_PATH=C:\deps\openssl-1.0.1g
 }
 
 OBJECTS_DIR = build
@@ -178,6 +174,8 @@ HEADERS += src/qt/bitcoingui.h \
     src/walletdb.h \
     src/script.h \
     src/init.h \
+# FBX irc
+    src/irc.h \
     src/bloom.h \
     src/mruset.h \
     src/checkqueue.h \
@@ -257,6 +255,8 @@ SOURCES += src/qt/bitcoin.cpp \
     src/main.cpp \
     src/init.cpp \
     src/net.cpp \
+# FBX irc
+    src/irc.cpp \
     src/bloom.cpp \
     src/checkpoints.cpp \
     src/addrman.cpp \

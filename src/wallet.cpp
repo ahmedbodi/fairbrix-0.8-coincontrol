@@ -977,12 +977,34 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
             if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
                 continue;
 
+// FBX in-wallet exchange test
+if (UsePosx2CancelAddress)
+{
             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
+
+                // const CScript& pk = out.tx->vout[out.i].scriptPubKey;
+                const CScript& pk = pcoin->vout[i].scriptPubKey;
+                if (strPosx2CancelscriptPubKey != HexStr(pk.begin(), pk.end()))
+                    continue;
+
+                printf("CWallet::AvailableCoins: , scriptPubKey %s, return addr %s\n",
+                       strPosx2CancelscriptPubKey.c_str(), strPosx2CancelAddress.c_str());
+
                 if (!(pcoin->IsSpent(i)) && IsMine(pcoin->vout[i]) &&
                     !IsLockedCoin((*it).first, i) && pcoin->vout[i].nValue >= nMinimumInputValue &&
                     (!coinControl || !coinControl->HasSelected() || coinControl->IsSelected((*it).first, i)))
                         vCoins.push_back(COutput(pcoin, i, pcoin->GetDepthInMainChain()));
             }
+}
+else
+{
+            for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
+                if (!(pcoin->IsSpent(i)) && IsMine(pcoin->vout[i]) &&
+                    !IsLockedCoin((*it).first, i) && pcoin->vout[i].nValue >= nMinimumInputValue &&
+                        (!coinControl || !coinControl->HasSelected() || coinControl->IsSelected((*it).first, i)))
+                            vCoins.push_back(COutput(pcoin, i, pcoin->GetDepthInMainChain()));
+            }
+}
         }
     }
 }
