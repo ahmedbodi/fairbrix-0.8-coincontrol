@@ -248,6 +248,7 @@ static const CRPCCommand vRPCCommands[] =
     { "svgetblock",             &svgetblock,             false,     false },
     { "svimportprivkeys",       &svimportprivkeys,       false,     false },
     { "svlistmatched",          &svlistmatched,          false,     false },
+    { "svsendtoaddress",        &svsendtoaddress,        false,     false },
 
     { "gettransaction",         &gettransaction,         false,     false },
     { "listtransactions",       &listtransactions,       false,     false },
@@ -1184,6 +1185,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "svgetblock"             && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "svlistmatched"          && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "svlistmatched"          && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "svsendtoaddress"        && n > 0) ConvertTo<double>(params[0]);
 
     if (strMethod == "move"                   && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "move"                   && n > 3) ConvertTo<boost::int64_t>(params[3]);

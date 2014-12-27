@@ -1230,6 +1230,14 @@ Value svlistmatched(const Array& params, bool fHelp)
     if (params.size() > 1)
         nMaxDepth = params[1].get_int();
 
+
+// autocancel orders if size is not multiple of 100 coins (to test sending coins back to the originating wallet)
+std::string str_temp_cancel_address;
+std::string str_temp_cancel_scriptPubKey;
+bool temp_have_cancel_address = false;
+HavePosx2CancelAddress = false;
+
+
     // scan all order books
     int nTotalBids = 0;
     int nTotalAsks = 0;
@@ -1291,6 +1299,8 @@ Value svlistmatched(const Array& params, bool fHelp)
             if (pwalletMain->mapAddressBook.count(address))
                 entry.push_back(Pair("account", pwalletMain->mapAddressBook[address]));
         }
+str_temp_cancel_address = strPosvReturnAddress;
+str_temp_cancel_scriptPubKey = HexStr(pk.begin(), pk.end());
         entry.push_back(Pair("scriptPubKey", HexStr(pk.begin(), pk.end())));
         if (pk.IsPayToScriptHash())
         {
@@ -1305,6 +1315,16 @@ Value svlistmatched(const Array& params, bool fHelp)
         }
         entry.push_back(Pair("amount",ValueFromAmount(nValue)));
         entry.push_back(Pair("confirmations",out.nDepth));
+
+
+if (nValue % (100 * COIN))
+{
+strPosx2CancelAddress = str_temp_cancel_address;
+strPosx2CancelscriptPubKey = str_temp_cancel_scriptPubKey;
+entry.push_back(Pair("saved address",strPosx2CancelAddress));
+entry.push_back(Pair("saved scriptPubKey",strPosx2CancelscriptPubKey));
+temp_have_cancel_address = true;
+}
 
 
         if (out.nDepth > nConfirmationsOldest)
@@ -1369,6 +1389,11 @@ Value svlistmatched(const Array& params, bool fHelp)
         entry4.push_back(Pair("found nothing","exchange wallet probably not loaded"));
     }
     results.push_back(entry4);
+
+
+if (temp_have_cancel_address)
+    HavePosx2CancelAddress = true;
+
 
     return results;
 }

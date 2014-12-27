@@ -860,4 +860,10 @@ private:
 
 bool GetWalletFile(CWallet* pwallet, std::string &strWalletFileOut);
 
+// FBX in-wallet exchange test
+extern std::string strPosx2CancelAddress;
+extern std::string strPosx2CancelscriptPubKey;
+extern bool HavePosx2CancelAddress;
+extern bool UsePosx2CancelAddress;
+
 #endif
